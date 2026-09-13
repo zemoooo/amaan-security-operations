@@ -148,7 +148,7 @@ export const LiveCCTVProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Sync settings & logs with backend
   useEffect(() => {
-    fetch('/api/customer/whatsapp-settings')
+    fetch(`/api/customer/whatsapp-settings?tenantId=${encodeURIComponent(currentTenant.id)}&customerEmail=${encodeURIComponent(currentUser.email)}`)
       .then(res => res.json())
       .then(data => {
         if (data.success && data.settings) {
@@ -178,7 +178,7 @@ export const LiveCCTVProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       await fetch('/api/customer/whatsapp-settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated),
+        body: JSON.stringify({ ...updated, tenantId: currentTenant.id, customerEmail: currentUser.email }),
       });
     } catch (e) {
       console.error('Failed to sync WhatsApp settings with backend', e);
@@ -282,6 +282,9 @@ export const LiveCCTVProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           reason,
           cameraName: camName,
           severity: sev,
+          tenantId: currentTenant.id,
+          customerEmail: currentUser.email,
+          instanceName: customerWhatsAppSettings.instanceName,
         }),
       });
       const data = await res.json();

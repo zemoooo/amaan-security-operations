@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { GoogleGenAI } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
+import nodemailer from 'nodemailer';
 
 dotenv.config();
 
@@ -338,7 +339,7 @@ app.post('/api/ai/daily-briefing', async (req, res) => {
 });
 
 // 5. WhatsApp via Evolution API (real QR/session/message delivery)
-let customerWhatsAppConfig = {
+const DEFAULT_WHATSAPP_CONFIG = {
   phoneNumber: '',
   customerName: '',
   instanceName: '',
@@ -349,6 +350,13 @@ let customerWhatsAppConfig = {
   autoPlayVoiceBriefing: false,
   language: 'ar',
 };
+const customerWhatsAppConfigs = new Map<string, any>();
+function whatsappConfigKey(req: any) { return String(req.body?.tenantId || req.query?.tenantId || req.body?.customerEmail || req.query?.customerEmail || 'default'); }
+function getWhatsAppConfig(req: any) {
+  const key = whatsappConfigKey(req);
+  if (!customerWhatsAppConfigs.has(key)) customerWhatsAppConfigs.set(key, { ...DEFAULT_WHATSAPP_CONFIG });
+  return customerWhatsAppConfigs.get(key);
+}
 let whatsappDispatchHistory: any[] = [];
 
 function whatsappInstanceName(req: any) {
@@ -357,10 +365,11 @@ function whatsappInstanceName(req: any) {
 }
 
 app.get('/api/customer/whatsapp-settings', (req, res) => {
-  res.json({ success: true, settings: customerWhatsAppConfig, provider: 'EVOLUTION_API', configured: Boolean(evolutionBaseUrl() && process.env.EVOLUTION_API_KEY) });
+  res.json({ success: true, settings: getWhatsAppConfig(req), provider: 'EVOLUTION_API', configured: Boolean(evolutionBaseUrl() && process.env.EVOLUTION_API_KEY) });
 });
 
 app.post('/api/customer/whatsapp-settings', (req, res) => {
+  const customerWhatsAppConfig = getWhatsAppConfig(req);
   const { phoneNumber, customerName, instanceName, enabled, alertMode, minSeverity, callRingtoneEnabled, autoPlayVoiceBriefing, language } = req.body || {};
   if (phoneNumber !== undefined) customerWhatsAppConfig.phoneNumber = String(phoneNumber).trim();
   if (customerName !== undefined) customerWhatsAppConfig.customerName = String(customerName).trim();
@@ -381,7 +390,7 @@ app.post('/api/whatsapp/instance/create', async (req, res) => {
     const webhookUrl = appUrl ? `${appUrl}/api/whatsapp/webhook` : '';
     const webhookHeaders = process.env.EVOLUTION_WEBHOOK_SECRET ? { 'x-aman-webhook-secret': process.env.EVOLUTION_WEBHOOK_SECRET } : undefined;
     const data = await evolutionRequest('/instance/create', { method: 'POST', body: JSON.stringify({ instanceName, token: crypto.randomBytes(16).toString('hex'), integration: 'WHATSAPP-BAILEYS', qrcode: true, groupsIgnore: true, ...(webhookUrl ? { webhook: webhookUrl, webhookByEvents: false, webhookBase64: false, events: ['QRCODE_UPDATED','MESSAGES_UPSERT','MESSAGES_UPDATE','SEND_MESSAGE','CONNECTION_UPDATE'], ...(webhookHeaders ? { headers: webhookHeaders } : {}) } : {}) }) });
-    customerWhatsAppConfig.instanceName = instanceName;
+    getWhatsAppConfig(req).instanceName = instanceName;
     const qr = extractEvolutionQr(data);
     res.json({ success: true, instanceName, ...qr, evolution: data });
   } catch (error: any) { res.status(502).json({ success: false, error: error.message }); }
@@ -416,6 +425,7 @@ app.get('/api/notifications/whatsapp/logs', (_req, res) => res.json({ success: t
 
 app.post('/api/notifications/whatsapp/dispatch', async (req, res) => {
   try {
+    const customerWhatsAppConfig = getWhatsAppConfig(req);
     const { phoneNumber, action = 'MESSAGE', incidentId = `INC-${Date.now().toString(36).toUpperCase()}`, incidentTitle = 'تنبيه أمني عاجل', reason = 'تم رصد نشاط يتطلب التحقق', cameraName = 'الموقع', severity = 'CRITICAL', instanceName } = req.body || {};
     const targetPhone = phoneNumber || customerWhatsAppConfig.phoneNumber;
     if (!targetPhone) return res.status(400).json({ success: false, error: 'رقم العميل مطلوب' });
@@ -443,6 +453,7 @@ app.post('/api/notifications/whatsapp/test', async (req, res) => {
 
 async function dispatchThroughInternal(req: any, res: any) {
   try {
+    const customerWhatsAppConfig = getWhatsAppConfig(req);
     const { phoneNumber, incidentId = `TEST-${Date.now()}`, message, instanceName } = req.body || {};
     const targetPhone = phoneNumber || customerWhatsAppConfig.phoneNumber;
     const instance = instanceName || customerWhatsAppConfig.instanceName || process.env.EVOLUTION_DEFAULT_INSTANCE;
@@ -585,6 +596,8 @@ let registeredSubscribers = [
     companyName: 'إدارة منظومة أمان الذكية للمراقبة',
     machineId: 'AMAN-DEV-ADMIN-MASTER',
     role: 'SUPER_ADMIN',
+    emailVerified: true,
+    emailVerifiedAt: '2026-01-01T08:00:00Z',
     totalPaid: 0,
     registeredAt: '2026-01-01T08:00:00Z',
     lastActiveAt: new Date().toISOString(),
@@ -617,6 +630,8 @@ let registeredSubscribers = [
     companyName: 'مستودعات الأندلس المركزية',
     machineId: 'AMAN-DEV-98A2-F41C',
     role: 'OWNER',
+    emailVerified: true,
+    emailVerifiedAt: '2026-08-15T10:00:00Z',
     totalPaid: 480,
     registeredAt: '2026-08-15T10:00:00Z',
     lastActiveAt: new Date().toISOString(),
@@ -649,6 +664,8 @@ let registeredSubscribers = [
     companyName: 'الرياض للخدمات اللوجستية',
     machineId: 'AMAN-DEV-31B7-99E0',
     role: 'OWNER',
+    emailVerified: true,
+    emailVerifiedAt: '2026-09-11T12:00:00Z',
     totalPaid: 0,
     registeredAt: '2026-09-11T12:00:00Z',
     lastActiveAt: new Date().toISOString(),
@@ -681,6 +698,8 @@ let registeredSubscribers = [
     companyName: 'مصانع سافتكس الوطنية',
     machineId: 'AMAN-DEV-72C4-A109',
     role: 'OWNER',
+    emailVerified: true,
+    emailVerifiedAt: '2025-09-10T09:00:00Z',
     totalPaid: 1500,
     registeredAt: '2025-09-10T09:00:00Z',
     lastActiveAt: '2026-09-10T14:30:00Z',
@@ -709,6 +728,78 @@ let registeredSubscribers = [
 let generatedLicenseKeysHistory = [
   ...registeredSubscribers.map(s => s.currentLicense).filter(Boolean),
 ];
+
+// Email verification -------------------------------------------------
+const emailVerificationMemory = new Map<string, { subscriberId: string; expiresAt: number }>();
+
+function getMailTransport() {
+  const host = String(process.env.SMTP_HOST || '').trim();
+  const port = Number(process.env.SMTP_PORT || 587);
+  const user = String(process.env.SMTP_USER || '').trim();
+  const pass = String(process.env.SMTP_PASS || '').trim();
+  if (!host || !user || !pass) return null;
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || port === 465,
+    auth: { user, pass },
+  });
+}
+
+async function createEmailVerification(subscriberId: string, email: string, name: string) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+  emailVerificationMemory.set(token, { subscriberId, expiresAt });
+
+  const appUrl = String(process.env.APP_URL || '').replace(/\/$/, '');
+  const verifyUrl = `${appUrl}/api/auth/verify-email?token=${token}`;
+  const transport = getMailTransport();
+  if (!transport) {
+    throw new Error('خدمة البريد غير مضبوطة. أضف SMTP_HOST وSMTP_PORT وSMTP_USER وSMTP_PASS وSMTP_FROM في Render.');
+  }
+
+  await transport.sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to: email,
+    subject: 'تأكيد البريد الإلكتروني - نظام أمان',
+    text: `مرحباً ${name}\n\nاضغط على الرابط التالي لتأكيد بريدك الإلكتروني وإكمال إنشاء الحساب:\n${verifyUrl}\n\nالرابط صالح لمدة 24 ساعة.`,
+    html: `<div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.8"><h2>تأكيد البريد الإلكتروني</h2><p>مرحباً ${name}،</p><p>اضغط على الزر التالي لتأكيد بريدك الإلكتروني وإكمال إنشاء حسابك في نظام أمان:</p><p><a href="${verifyUrl}" style="display:inline-block;padding:12px 20px;background:#0891b2;color:#fff;text-decoration:none;border-radius:8px">تأكيد البريد الإلكتروني</a></p><p>أو انسخ الرابط:</p><p>${verifyUrl}</p><p>الرابط صالح لمدة 24 ساعة.</p></div>`,
+  });
+  return verifyUrl;
+}
+
+app.get('/api/auth/verify-email', async (req, res) => {
+  try {
+    const token = String(req.query.token || '').trim();
+    const record = emailVerificationMemory.get(token);
+    if (!record || record.expiresAt < Date.now()) {
+      emailVerificationMemory.delete(token);
+      return res.status(400).send('<html dir="rtl"><body style="font-family:Arial;text-align:center;padding:50px"><h2>رابط التحقق غير صالح أو منتهي</h2><p>اطلب إرسال رابط تحقق جديد.</p></body></html>');
+    }
+    const subscriber = registeredSubscribers.find((s: any) => s.id === record.subscriberId) as any;
+    if (!subscriber) return res.status(404).send('<html dir="rtl"><body style="font-family:Arial;text-align:center;padding:50px"><h2>الحساب غير موجود</h2></body></html>');
+    subscriber.emailVerified = true;
+    subscriber.emailVerifiedAt = new Date().toISOString();
+    emailVerificationMemory.delete(token);
+    const appUrl = String(process.env.APP_URL || '').replace(/\/$/, '');
+    return res.redirect(`${appUrl || ''}/?email_verified=1`);
+  } catch (error: any) {
+    return res.status(500).send(`<html dir="rtl"><body style="font-family:Arial;text-align:center;padding:50px"><h2>تعذر التحقق</h2><p>${error.message || 'خطأ غير معروف'}</p></body></html>`);
+  }
+});
+
+app.post('/api/auth/resend-verification', async (req, res) => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const subscriber = registeredSubscribers.find((s: any) => s.email.toLowerCase() === email) as any;
+    if (!subscriber) return res.status(404).json({ success: false, error: 'الحساب غير موجود' });
+    if (subscriber.emailVerified) return res.json({ success: true, alreadyVerified: true, message: 'البريد الإلكتروني مؤكد بالفعل' });
+    await createEmailVerification(subscriber.id, subscriber.email, subscriber.name);
+    return res.json({ success: true, message: 'تم إرسال رابط تحقق جديد إلى بريدك الإلكتروني' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'تعذر إرسال رسالة التحقق' });
+  }
+});
 
 // 8.1 Register Real Customer Account with Email & Machine ID
 app.post('/api/auth/register', (req, res) => {
@@ -758,6 +849,8 @@ app.post('/api/auth/register', (req, res) => {
       companyName: String(companyName || 'منشأة جديدة').trim(),
       machineId: devMachineId,
       role: cleanEmail === 'smarttechyeme@gmail.com' ? 'SUPER_ADMIN' : 'OWNER',
+      emailVerified: cleanEmail === 'smarttechyeme@gmail.com',
+      emailVerifiedAt: cleanEmail === 'smarttechyeme@gmail.com' ? new Date().toISOString() : null,
       totalPaid: 0,
       registeredAt: new Date().toISOString(),
       lastActiveAt: new Date().toISOString(),
@@ -765,8 +858,23 @@ app.post('/api/auth/register', (req, res) => {
       currentLicense: newLicense,
     };
 
+    if (newSubscriber.role !== 'SUPER_ADMIN') {
+      // Send verification before activating the account. If SMTP is unavailable,
+      // registration fails instead of creating an unusable half-registered user.
+      await createEmailVerification(newSubscriber.id, newSubscriber.email, newSubscriber.name);
+    }
+
     registeredSubscribers.push(newSubscriber);
     generatedLicenseKeysHistory.unshift(newLicense);
+
+    if (newSubscriber.role !== 'SUPER_ADMIN') {
+      return res.json({
+        success: true,
+        requiresEmailVerification: true,
+        message: 'تم إنشاء الحساب. أرسلنا رابط تأكيد إلى بريدك الإلكتروني. يجب تأكيد البريد قبل تسجيل الدخول.',
+        user: { id: newSubscriber.id, email: newSubscriber.email, name: newSubscriber.name, phone: newSubscriber.phone, companyName: newSubscriber.companyName, machineId: newSubscriber.machineId, role: newSubscriber.role },
+      });
+    }
 
     res.json({
       success: true,
@@ -839,6 +947,10 @@ app.post('/api/auth/login', (req, res) => {
       } else {
         return res.status(401).json({ error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' });
       }
+    }
+
+    if (subscriber.emailVerified === false) {
+      return res.status(403).json({ success: false, requiresEmailVerification: true, error: 'يجب تأكيد البريد الإلكتروني أولاً. تحقق من بريدك أو اطلب إرسال رابط جديد.' });
     }
 
     // Update last active & bound machineId if provided
@@ -1461,8 +1573,9 @@ app.post('/api/agent/security-event', requireAgent, async (req, res) => {
     const key = `${tenantId}:${cameraId}:${eventType}`;
     let notified = false;
     if (eligible && shouldNotify(key, severity, Number(process.env.AI_ALERT_COOLDOWN_SECONDS || 600))) {
-      const targetPhone = b.alertPhone || customerWhatsAppConfig.phoneNumber;
-      const instance = b.instanceName || customerWhatsAppConfig.instanceName || process.env.EVOLUTION_DEFAULT_INSTANCE;
+      const agentWhatsAppConfig = getWhatsAppConfig({ body: { tenantId, customerEmail: b.customerEmail } });
+      const targetPhone = b.alertPhone || agentWhatsAppConfig.phoneNumber;
+      const instance = b.instanceName || agentWhatsAppConfig.instanceName || process.env.EVOLUTION_DEFAULT_INSTANCE;
       if (targetPhone && instance && evolutionBaseUrl() && process.env.EVOLUTION_API_KEY) {
         const evidence = snapshotUrl ? `\n🖼️ الصورة: ${snapshotUrl}` : '';
         const text = `🚨 *تنبيه أمني من نظام أمان*\n\n📌 الحدث: ${eventType}\n📍 الكاميرا: ${cameraName}\n⚠️ الخطورة: ${severity}\n🎯 الثقة: ${(confidence * 100).toFixed(0)}%\n🕒 الوقت: ${new Date(row.timestamp).toLocaleString('ar-YE')}\n📝 ${reason}${evidence}`;

@@ -34,7 +34,7 @@ import { AuthView } from './views/AuthView';
 function MainApp() {
   const { lang, theme } = useLanguageTheme();
   const { isLocked } = useLicense();
-  const { currentUser } = useAuth();
+  const { currentUser, isSuperAdmin } = useAuth();
   const { 
     activeEvidenceIncident, 
     setActiveEvidenceIncident, 
@@ -57,6 +57,14 @@ function MainApp() {
   const [showWindowsAgentModal, setShowWindowsAgentModal] = useState(false);
   const [showReportsModal, setShowReportsModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // إدارة النظام والمشتركين متاحة حصراً للإدارة العامة (SUPER_ADMIN).
+  // إذا حاول مستخدم عادي الوصول إليها مباشرةً، نعيده للوحة التحكم.
+  React.useEffect(() => {
+    if (currentView === 'admin_subscribers' && !isSuperAdmin) {
+      setCurrentView('dashboard');
+    }
+  }, [currentView, isSuperAdmin]);
 
   const handleOpenZoneDrawer = (cam?: Camera) => {
     setZoneDrawerCamera(cam || selectedCamera || cameras[0]);
@@ -123,7 +131,7 @@ function MainApp() {
             />
           )}
 
-          {currentView === 'admin_subscribers' && (
+          {currentView === 'admin_subscribers' && isSuperAdmin && (
             <AdminSubscribersView />
           )}
 
@@ -176,7 +184,7 @@ function MainApp() {
         {[
           { id: 'dashboard' as AppView, label: 'الرئيسية' },
           { id: 'cameras' as AppView, label: 'الكاميرات' },
-          { id: 'admin_subscribers' as AppView, label: 'المشتركين' },
+          ...(isSuperAdmin ? [{ id: 'admin_subscribers' as AppView, label: 'المشتركين' }] : []),
           { id: 'security' as AppView, label: 'الأمن' },
           { id: 'attendance' as AppView, label: 'الحضور' },
           { id: 'subscriptions' as AppView, label: 'الباقات' },

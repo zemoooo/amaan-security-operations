@@ -57,7 +57,7 @@ export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
   } = useLiveCCTV();
 
   const [activeTab, setActiveTab] = useState<'CONFIG' | 'CONNECT' | 'PREVIEW' | 'HISTORY'>('CONFIG');
-  const [instanceName, setInstanceName] = useState('aman_default');
+  const [instanceName, setInstanceName] = useState(customerWhatsAppSettings.instanceName || 'aman_default');
   const [qrImage, setQrImage] = useState<string | null>(null);
   const [waState, setWaState] = useState<string>('unknown');
   const [qrLoading, setQrLoading] = useState(false);
@@ -93,6 +93,7 @@ export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
       phoneNumber: phoneNumber.trim(),
       customerName: customerName.trim(),
       enabled,
+      instanceName: instanceName.trim(),
       alertMode,
       minSeverity,
       callRingtoneEnabled,

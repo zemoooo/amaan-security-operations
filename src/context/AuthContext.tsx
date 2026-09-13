@@ -118,6 +118,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify(data),
       });
       const result = await res.json();
+      if (result.success && result.requiresEmailVerification) {
+        return { success: true, message: result.message || 'تم إرسال رابط التحقق إلى بريدك الإلكتروني' };
+      }
       if (result.success && result.user) {
         const newUser: User = {
           id: result.user.id,

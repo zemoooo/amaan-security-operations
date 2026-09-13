@@ -16,6 +16,8 @@ export const AuthView: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [verificationPending, setVerificationPending] = useState(false);
+  const [resending, setResending] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,8 +42,8 @@ export const AuthView: React.FC = () => {
         });
 
         if (res.success) {
-          setSuccessMsg('تم إنشاء الحساب بنجاح! جاري تسجيل الدخول...');
-          await checkLicenseStatus();
+          setVerificationPending(true);
+          setSuccessMsg(res.message || 'تم إنشاء الحساب. تحقق من بريدك الإلكتروني قبل تسجيل الدخول.');
         } else {
           setErrorMsg(res.error || 'فشل التسجيل');
         }
@@ -101,6 +103,21 @@ export const AuthView: React.FC = () => {
             إنشاء حساب
           </button>
         </div>
+
+        {verificationPending && (
+          <div className="mx-6 mb-4 p-4 rounded-2xl bg-cyan-950/40 border border-cyan-800 text-cyan-200 text-sm">
+            <div className="flex items-center gap-2 font-bold mb-2"><Mail className="w-4 h-4" /> تحقق من بريدك الإلكتروني</div>
+            <p className="text-xs text-cyan-100/80 leading-6">تم إرسال رابط التحقق إلى <strong>{email}</strong>. افتح الرسالة واضغط رابط التأكيد، ثم ارجع وسجّل الدخول.</p>
+            <button type="button" disabled={resending} onClick={async () => {
+              setResending(true); setErrorMsg(null);
+              try {
+                const r = await fetch('/api/auth/resend-verification', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email }) });
+                const d = await r.json();
+                if (d.success) setSuccessMsg(d.message || 'تم إرسال رابط جديد'); else setErrorMsg(d.error || 'تعذر إعادة الإرسال');
+              } catch { setErrorMsg('تعذر الاتصال بالخادم'); } finally { setResending(false); }
+            }} className="mt-3 text-xs font-bold text-cyan-300 hover:text-white disabled:opacity-50">{resending ? 'جاري الإرسال...' : 'إعادة إرسال رابط التحقق'}</button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="p-6 pt-0 space-y-4">
           {tab === 'register' && (

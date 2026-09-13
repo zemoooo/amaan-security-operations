@@ -55,6 +55,20 @@ CREATE TABLE public.cameras (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- Customer WhatsApp connection/settings
+CREATE TABLE IF NOT EXISTS public.customer_whatsapp_settings (
+    tenant_id TEXT PRIMARY KEY REFERENCES public.tenants(id) ON DELETE CASCADE,
+    customer_email TEXT,
+    phone_number TEXT,
+    customer_name TEXT,
+    instance_name TEXT,
+    enabled BOOLEAN DEFAULT true,
+    alert_mode TEXT DEFAULT 'MESSAGE_ONLY',
+    min_severity TEXT DEFAULT 'MEDIUM',
+    language TEXT DEFAULT 'ar',
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
+);
+
 -- 4. Employees Table
 CREATE TABLE public.employees (
     id TEXT PRIMARY KEY,

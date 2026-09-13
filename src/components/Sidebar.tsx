@@ -111,7 +111,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onSelectView }) =
           {t('الوحدات التشغيلية', 'Operational Modules')}
         </span>
 
-        {navItems.map(item => {
+        {navItems.filter(item => item.id !== 'admin_subscribers' || isSuperAdmin).map(item => {
           const Icon = item.icon;
           const isActive = currentView === item.id;
 

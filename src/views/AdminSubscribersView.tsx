@@ -45,7 +45,7 @@ export const AdminSubscribersView: React.FC = () => {
     supportPhone,
     supportEmail
   } = useLicense();
-  const { currentUser } = useAuth();
+  const { currentUser, isSuperAdmin } = useAuth();
   const { t } = useLanguageTheme();
 
   // Generator form state
@@ -181,6 +181,11 @@ export const AdminSubscribersView: React.FC = () => {
     if (statusFilter === 'ALL') return matchesSearch;
     return matchesSearch && sub.status === statusFilter;
   });
+
+  // حماية إضافية داخل الصفحة نفسها، حتى لو تم الوصول إليها من رابط/حالة مباشرة.
+  if (!isSuperAdmin) {
+    return null;
+  }
 
   return (
     <div className="p-6 md:p-8 space-y-8 max-w-7xl mx-auto animate-fade-in text-right" dir="rtl">
