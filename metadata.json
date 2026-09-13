@@ -1,0 +1,7 @@
+{
+  "name": "AI CCTV Security & Operations Agent SaaS",
+  "description": "منصة SaaS متكاملة للمراقبة الذكية بالذكاء الاصطناعي، تتبع الكاميرات وتحليل الفيديو لحظياً، كشف السلوكيات المشبوهة، الحضور والانصراف، وإدارة مخزون المستودعات.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
