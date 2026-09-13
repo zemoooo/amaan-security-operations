@@ -475,71 +475,243 @@ app.get('/api/notifications/whatsapp/logs', async (req, res) => {
   } catch (e: any) { return res.status(500).json({ success: false, error: e.message }); }
 });
 
+// ============================================================
+// WhatsApp Dispatch via Evolution API
+// ============================================================
 app.post('/api/notifications/whatsapp/dispatch', async (req, res) => {
   try {
+    const customerWhatsAppConfig =
+      await getWhatsAppConfig(req);
+
     const {
-  clientNumber,
-  phoneNumber,
-  action = 'MESSAGE',
-  incidentId = `INC-${Date.now().toString(36).toUpperCase()}`,
-  incidentTitle = 'تنبيه أمني عاجل',
-  reason = 'تم رصد نشاط يتطلب التحقق',
-  cameraName = 'الموقع',
-  severity = 'CRITICAL',
-  instanceName
-} = req.body || {};
+      // يدعم الاسم الجديد والقديم معًا
+      clientNumber,
+      phoneNumber,
 
-const targetPhone =
-  clientNumber ||
-  phoneNumber ||
-  customerWhatsAppConfig.phoneNumber;
-    if (!targetPhone) return res.status(400).json({ success: false, error: 'رقم العميل مطلوب' });
-    if (!evolutionBaseUrl() || !process.env.EVOLUTION_API_KEY) return res.status(503).json({ success: false, error: 'Evolution API غير مضبوط على الخادم' });
-    const instance = instanceName || customerWhatsAppConfig.instanceName || process.env.EVOLUTION_DEFAULT_INSTANCE;
-    if (!instance) return res.status(400).json({ success: false, error: 'instanceName مطلوب' });
+      action = 'MESSAGE',
 
-    const appUrl = process.env.APP_URL || '';
-    const evidenceUrl = appUrl ? `${appUrl}/events/${encodeURIComponent(incidentId)}` : '';
-    const body = `🚨 *تنبيه أمني من نظام أمان*\n\n📌 الحدث: ${incidentTitle}\n📍 الكاميرا: ${cameraName}\n⚠️ الخطورة: ${severity}\n📝 التفاصيل: ${reason}${evidenceUrl ? `\n\n🔗 مراجعة الحادث: ${evidenceUrl}` : ''}`;
-    const evolution = await sendEvolutionText(instance, targetPhone, body);
-    const log = { id: `wa-${Date.now()}`, timestamp: new Date().toISOString(), recipient: targetPhone, action, incidentTitle, severity, status: 'DELIVERED', provider: 'EVOLUTION_API', notes: action === 'BOTH' ? 'تم إرسال الرسالة عبر Evolution API؛ المكالمة الصوتية لا تُنفذ تلقائياً عبر هذا المسار.' : 'تم إرسال الرسالة عبر Evolution API', evolution };
+      incidentId =
+        `INC-${Date.now().toString(36).toUpperCase()}`,
+
+      incidentTitle = 'تنبيه أمني عاجل',
+
+      reason = 'تم رصد نشاط يتطلب التحقق',
+
+      cameraName = 'الموقع',
+
+      severity = 'CRITICAL',
+
+      instanceName,
+    } = req.body || {};
+
+    // ========================================================
+    // رقم العميل المستلم
+    // الأولوية:
+    // 1) clientNumber
+    // 2) phoneNumber
+    // 3) الرقم المحفوظ في إعدادات العميل
+    // ========================================================
+    const targetPhone =
+      clientNumber ||
+      phoneNumber ||
+      customerWhatsAppConfig.phoneNumber;
+
+    if (!targetPhone) {
+      return res.status(400).json({
+        success: false,
+        error: 'رقم العميل مطلوب',
+      });
+    }
+
+    // ========================================================
+    // التأكد من إعداد Evolution API
+    // ========================================================
+    if (
+      !evolutionBaseUrl() ||
+      !process.env.EVOLUTION_API_KEY
+    ) {
+      return res.status(503).json({
+        success: false,
+        error: 'Evolution API غير مضبوط على الخادم',
+      });
+    }
+
+    // ========================================================
+    // اسم Instance المرسل
+    // الأولوية:
+    // 1) instanceName القادم من الطلب
+    // 2) Instance المحفوظة للعميل
+    // 3) EVOLUTION_DEFAULT_INSTANCE
+    // ========================================================
+    const instance =
+      instanceName ||
+      customerWhatsAppConfig.instanceName ||
+      process.env.EVOLUTION_DEFAULT_INSTANCE;
+
+    if (!instance) {
+      return res.status(400).json({
+        success: false,
+        error: 'instanceName مطلوب',
+      });
+    }
+
+    // ========================================================
+    // تنظيف البيانات
+    // ========================================================
+    const cleanTargetPhone = cleanPhone(targetPhone);
+    const cleanInstance = String(instance).trim();
+
+    if (!cleanTargetPhone) {
+      return res.status(400).json({
+        success: false,
+        error: 'رقم WhatsApp للعميل غير صالح',
+      });
+    }
+
+    if (!cleanInstance) {
+      return res.status(400).json({
+        success: false,
+        error: 'اسم Instance غير صالح',
+      });
+    }
+
+    // ========================================================
+    // رابط مراجعة الحادث
+    // ========================================================
+    const appUrl =
+      String(process.env.APP_URL || '').replace(/\/$/, '');
+
+    const evidenceUrl = appUrl
+      ? `${appUrl}/events/${encodeURIComponent(incidentId)}`
+      : '';
+
+    // ========================================================
+    // نص رسالة WhatsApp
+    // ========================================================
+    const body =
+      `🚨 *تنبيه أمني من نظام أمان*\n\n` +
+      `📌 الحدث: ${incidentTitle}\n` +
+      `📍 الكاميرا: ${cameraName}\n` +
+      `⚠️ الخطورة: ${severity}\n` +
+      `📝 التفاصيل: ${reason}` +
+      (
+        evidenceUrl
+          ? `\n\n🔗 مراجعة الحادث: ${evidenceUrl}`
+          : ''
+      );
+
+    // ========================================================
+    // الإرسال عبر Evolution API
+    //
+    // instance = رقم WhatsApp المرسل
+    // cleanTargetPhone = رقم العميل المستلم
+    // ========================================================
+    const evolution = await sendEvolutionText(
+      cleanInstance,
+      cleanTargetPhone,
+      body
+    );
+
+    // ========================================================
+    // تسجيل العملية
+    // ========================================================
+    const log = {
+      id: `wa-${Date.now()}`,
+
+      timestamp:
+        new Date().toISOString(),
+
+      recipient:
+        cleanTargetPhone,
+
+      action,
+
+      incidentTitle,
+
+      severity,
+
+      status:
+        'DELIVERED',
+
+      provider:
+        'EVOLUTION_API',
+
+      instanceName:
+        cleanInstance,
+
+      notes:
+        action === 'BOTH'
+          ? 'تم إرسال الرسالة عبر Evolution API؛ المكالمة الصوتية لا تُنفذ تلقائياً عبر هذا المسار.'
+          : 'تم إرسال الرسالة عبر Evolution API',
+
+      evolution,
+    };
+
     whatsappDispatchHistory.unshift(log);
-    try { await requireDatabase().from('whatsapp_events').insert({ tenant_id: String(req.body?.tenantId || ''), event_type: 'MESSAGE_SENT', payload: log }); } catch (e) { console.warn('WhatsApp log persistence failed', e); }
-    res.json({ success: true, provider: 'EVOLUTION_API', status: 'DELIVERED', recipient: targetPhone, instanceName: instance, logEntry: log, evolution });
+
+    // ========================================================
+    // حفظ سجل الإرسال في Supabase
+    // ========================================================
+    try {
+      await requireDatabase()
+        .from('whatsapp_events')
+        .insert({
+          tenant_id:
+            String(req.body?.tenantId || ''),
+
+          event_type:
+            'MESSAGE_SENT',
+
+          payload:
+            log,
+        });
+    } catch (e) {
+      console.warn(
+        'WhatsApp log persistence failed',
+        e
+      );
+    }
+
+    // ========================================================
+    // الاستجابة للـFrontend
+    // ========================================================
+    return res.json({
+      success: true,
+
+      provider:
+        'EVOLUTION_API',
+
+      status:
+        'DELIVERED',
+
+      recipient:
+        cleanTargetPhone,
+
+      instanceName:
+        cleanInstance,
+
+      logEntry:
+        log,
+
+      evolution,
+    });
+
   } catch (error: any) {
-    console.error('Evolution WhatsApp dispatch failed:', error);
-    res.status(502).json({ success: false, error: error.message });
+
+    console.error(
+      'Evolution WhatsApp dispatch failed:',
+      error
+    );
+
+    return res.status(502).json({
+      success: false,
+
+      error:
+        error?.message ||
+        'فشل إرسال WhatsApp',
+    });
   }
 });
-
-app.post('/api/notifications/whatsapp/test', async (req, res) => {
-  req.body = { ...(req.body || {}), incidentTitle: 'اختبار ربط واتساب', reason: 'هذه رسالة اختبار حقيقية من نظام أمان', severity: 'HIGH', action: 'MESSAGE' };
-  return (app as any)._router?.handle ? dispatchThroughInternal(req, res) : res.status(500).json({ error: 'Internal route error' });
-});
-
-async function dispatchThroughInternal(req: any, res: any) {
-  try {
-    const customerWhatsAppConfig = await getWhatsAppConfig(req);
-    const {
-  clientNumber,
-  phoneNumber,
-  incidentId = `TEST-${Date.now()}`,
-  message,
-  instanceName
-} = req.body || {};
-
-const targetPhone =
-  clientNumber ||
-  phoneNumber ||
-  customerWhatsAppConfig.phoneNumber;
-    const instance = instanceName || customerWhatsAppConfig.instanceName || process.env.EVOLUTION_DEFAULT_INSTANCE;
-    if (!targetPhone || !instance) return res.status(400).json({ success: false, error: 'رقم العميل وinstanceName مطلوبان' });
-    const text = message || `✅ اختبار حقيقي لربط واتساب من نظام أمان\nرقم الاختبار: ${incidentId}`;
-    const evolution = await sendEvolutionText(instance, targetPhone, text);
-    res.json({ success: true, provider: 'EVOLUTION_API', status: 'DELIVERED', recipient: targetPhone, evolution });
-  } catch (error: any) { res.status(502).json({ success: false, error: error.message }); }
-}
-
 app.post('/api/whatsapp/webhook', async (req, res) => {
   try {
     const expected = String(process.env.EVOLUTION_WEBHOOK_SECRET || '').trim();
