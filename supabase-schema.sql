@@ -263,3 +263,12 @@ INSERT INTO storage.buckets (id, name, public) VALUES ('employee-photos', 'emplo
 DROP POLICY IF EXISTS "Public employee photos" ON storage.objects;
 CREATE POLICY "Public employee photos" ON storage.objects FOR SELECT USING (bucket_id = 'employee-photos');
 CREATE POLICY "Service role employee photos" ON storage.objects FOR ALL USING (bucket_id = 'employee-photos' AND auth.role() = 'service_role') WITH CHECK (bucket_id = 'employee-photos' AND auth.role() = 'service_role');
+
+-- Evidence storage for AI security snapshots.
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('security-evidence', 'security-evidence', true)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE INDEX IF NOT EXISTS idx_cameras_agent_id ON public.cameras(agent_id);
+CREATE INDEX IF NOT EXISTS idx_behavior_events_tenant_camera_time ON public.behavior_events(tenant_id, camera_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_edge_agents_tenant_active ON public.edge_agents(tenant_id, is_active);

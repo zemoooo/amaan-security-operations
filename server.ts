@@ -42,17 +42,6 @@ function cleanPhone(phone: string) { return String(phone || '').replace(/\D/g, '
 function evolutionBaseUrl() { return String(process.env.EVOLUTION_API_URL || '').replace(/\/$/, ''); }
 function evolutionHeaders() { return { 'Content-Type': 'application/json', apikey: String(process.env.EVOLUTION_API_KEY || '') }; }
 
-function evolutionWebhookUrl() {
-  const appUrl = String(process.env.APP_URL || '').replace(/\/$/, '');
-  return appUrl ? `${appUrl}/api/whatsapp/webhook` : '';
-}
-
-function verifyEvolutionWebhook(req: any) {
-  const expected = String(process.env.EVOLUTION_WEBHOOK_SECRET || '').trim();
-  if (!expected) return true;
-  return String(req.headers['x-aman-webhook-secret'] || '') === expected;
-}
-
 async function evolutionRequest(pathname: string, init: RequestInit = {}) {
   const base = evolutionBaseUrl();
   if (!base || !process.env.EVOLUTION_API_KEY) throw new Error('Evolution API غير مضبوط: EVOLUTION_API_URL / EVOLUTION_API_KEY');
@@ -388,48 +377,14 @@ app.post('/api/customer/whatsapp-settings', (req, res) => {
 app.post('/api/whatsapp/instance/create', async (req, res) => {
   try {
     const instanceName = whatsappInstanceName(req);
-    const webhookUrl = evolutionWebhookUrl();
-    const webhookSecret = String(process.env.EVOLUTION_WEBHOOK_SECRET || '').trim();
-
-    const payload: any = {
-      instanceName,
-      integration: 'WHATSAPP-BAILEYS',
-      qrcode: true,
-      groupsIgnore: true,
-      webhook: {
-        enabled: Boolean(webhookUrl),
-        url: webhookUrl || undefined,
-        byEvents: false,
-        base64: false,
-        events: [
-          'QRCODE_UPDATED',
-          'MESSAGES_UPSERT',
-          'MESSAGES_UPDATE',
-          'SEND_MESSAGE',
-          'CONNECTION_UPDATE'
-        ],
-        ...(webhookSecret ? { headers: { 'x-aman-webhook-secret': webhookSecret } } : {})
-      }
-    };
-
-    const data = await evolutionRequest('/instance/create', {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
-
+    const appUrl = process.env.APP_URL || '';
+    const webhookUrl = appUrl ? `${appUrl}/api/whatsapp/webhook` : '';
+    const webhookHeaders = process.env.EVOLUTION_WEBHOOK_SECRET ? { 'x-aman-webhook-secret': process.env.EVOLUTION_WEBHOOK_SECRET } : undefined;
+    const data = await evolutionRequest('/instance/create', { method: 'POST', body: JSON.stringify({ instanceName, token: crypto.randomBytes(16).toString('hex'), integration: 'WHATSAPP-BAILEYS', qrcode: true, groupsIgnore: true, ...(webhookUrl ? { webhook: webhookUrl, webhookByEvents: false, webhookBase64: false, events: ['QRCODE_UPDATED','MESSAGES_UPSERT','MESSAGES_UPDATE','SEND_MESSAGE','CONNECTION_UPDATE'], ...(webhookHeaders ? { headers: webhookHeaders } : {}) } : {}) }) });
     customerWhatsAppConfig.instanceName = instanceName;
     const qr = extractEvolutionQr(data);
-    res.json({
-      success: true,
-      instanceName,
-      webhookConfigured: Boolean(webhookUrl),
-      ...qr,
-      evolution: data
-    });
-  } catch (error: any) {
-    console.error('Evolution instance create failed:', error);
-    res.status(502).json({ success: false, error: error.message });
-  }
+    res.json({ success: true, instanceName, ...qr, evolution: data });
+  } catch (error: any) { res.status(502).json({ success: false, error: error.message }); }
 });
 
 app.get('/api/whatsapp/qr/:instanceName', async (req, res) => {
@@ -471,11 +426,7 @@ app.post('/api/notifications/whatsapp/dispatch', async (req, res) => {
     const appUrl = process.env.APP_URL || '';
     const evidenceUrl = appUrl ? `${appUrl}/events/${encodeURIComponent(incidentId)}` : '';
     const body = `🚨 *تنبيه أمني من نظام أمان*\n\n📌 الحدث: ${incidentTitle}\n📍 الكاميرا: ${cameraName}\n⚠️ الخطورة: ${severity}\n📝 التفاصيل: ${reason}${evidenceUrl ? `\n\n🔗 مراجعة الحادث: ${evidenceUrl}` : ''}`;
-    const evolution = await evolutionRequest(`/message/sendText/${encodeURIComponent(instance)}`, { method: 'POST', body: JSON.stringify({
-        number: cleanPhone(targetPhone),
-        options: { delay: 500, presence: 'composing' },
-        textMessage: { text: body }
-      }) });
+    const evolution = await evolutionRequest(`/message/sendText/${encodeURIComponent(instance)}`, { method: 'POST', body: JSON.stringify({ number: cleanPhone(targetPhone), textMessage: { text: body }, options: { delay: 500, presence: 'composing' } }) });
     const log = { id: `wa-${Date.now()}`, timestamp: new Date().toISOString(), recipient: targetPhone, action, incidentTitle, severity, status: 'DELIVERED', provider: 'EVOLUTION_API', notes: action === 'BOTH' ? 'تم إرسال الرسالة عبر Evolution API؛ المكالمة الصوتية لا تُنفذ تلقائياً عبر هذا المسار.' : 'تم إرسال الرسالة عبر Evolution API', evolution };
     whatsappDispatchHistory.unshift(log);
     res.json({ success: true, provider: 'EVOLUTION_API', status: 'DELIVERED', recipient: targetPhone, instanceName: instance, logEntry: log, evolution });
@@ -486,14 +437,8 @@ app.post('/api/notifications/whatsapp/dispatch', async (req, res) => {
 });
 
 app.post('/api/notifications/whatsapp/test', async (req, res) => {
-  req.body = {
-    ...(req.body || {}),
-    incidentTitle: 'اختبار ربط واتساب',
-    reason: 'هذه رسالة اختبار حقيقية من نظام أمان',
-    severity: 'HIGH',
-    action: 'MESSAGE'
-  };
-  return dispatchThroughInternal(req, res);
+  req.body = { ...(req.body || {}), incidentTitle: 'اختبار ربط واتساب', reason: 'هذه رسالة اختبار حقيقية من نظام أمان', severity: 'HIGH', action: 'MESSAGE' };
+  return (app as any)._router?.handle ? dispatchThroughInternal(req, res) : res.status(500).json({ error: 'Internal route error' });
 });
 
 async function dispatchThroughInternal(req: any, res: any) {
@@ -503,44 +448,24 @@ async function dispatchThroughInternal(req: any, res: any) {
     const instance = instanceName || customerWhatsAppConfig.instanceName || process.env.EVOLUTION_DEFAULT_INSTANCE;
     if (!targetPhone || !instance) return res.status(400).json({ success: false, error: 'رقم العميل وinstanceName مطلوبان' });
     const text = message || `✅ اختبار حقيقي لربط واتساب من نظام أمان\nرقم الاختبار: ${incidentId}`;
-    const evolution = await evolutionRequest(`/message/sendText/${encodeURIComponent(instance)}`, { method: 'POST', body: JSON.stringify({
-      number: cleanPhone(targetPhone),
-      options: { delay: 300, presence: 'composing' },
-      textMessage: { text }
-    }) });
+    const evolution = await evolutionRequest(`/message/sendText/${encodeURIComponent(instance)}`, { method: 'POST', body: JSON.stringify({ number: cleanPhone(targetPhone), textMessage: { text }, options: { delay: 300, presence: 'composing' } }) });
     res.json({ success: true, provider: 'EVOLUTION_API', status: 'DELIVERED', recipient: targetPhone, evolution });
   } catch (error: any) { res.status(502).json({ success: false, error: error.message }); }
 }
 
 app.post('/api/whatsapp/webhook', async (req, res) => {
   try {
-    if (!verifyEvolutionWebhook(req)) {
-      return res.status(401).json({ success: false, error: 'Evolution webhook signature/secret غير صالح' });
+    const expected = String(process.env.EVOLUTION_WEBHOOK_SECRET || '').trim();
+    if (expected) {
+      const supplied = String(req.headers['x-aman-webhook-secret'] || req.headers['x-webhook-secret'] || req.query.secret || '').trim();
+      if (supplied !== expected) return res.status(401).json({ success: false, error: 'Invalid webhook secret' });
     }
-
     const event = req.body?.event || req.body?.type || 'unknown';
-    const instanceName =
-      req.body?.instance ||
-      req.body?.instanceName ||
-      req.body?.data?.instance ||
-      req.body?.data?.instanceName ||
-      null;
-
     if (supabaseAdmin) {
-      await supabaseAdmin.from('whatsapp_events').insert({
-        id: crypto.randomUUID(),
-        tenant_id: req.body?.data?.tenantId || req.body?.tenantId || null,
-        event_type: event,
-        payload: { ...req.body, _instanceName: instanceName },
-        created_at: new Date().toISOString()
-      });
+      await supabaseAdmin.from('whatsapp_events').insert({ id: crypto.randomUUID(), tenant_id: req.body?.data?.tenantId || null, event_type: event, payload: req.body, created_at: new Date().toISOString() });
     }
-
-    res.json({ success: true, event, instanceName });
-  } catch (error: any) {
-    console.error('Evolution webhook failed:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
+    res.json({ success: true });
+  } catch (error: any) { res.status(500).json({ success: false, error: error.message }); }
 });
 
 // 6. RTSP Stream Test Connection
@@ -1477,10 +1402,91 @@ app.post('/api/agent/heartbeat', requireAgent, async (req, res) => {
 
 app.get('/api/agent/camera-config', requireAgent, async (req, res) => {
   const tenantId = req.edgeAgent.tenant_id;
-  const { data, error } = await supabaseAdmin!.from('cameras').select('id,name,location,stream_url,username_encrypted,password_encrypted,status,ai_enabled,recording_enabled,type,recorder_id,channel').eq('tenant_id', tenantId);
+  const { data, error } = await supabaseAdmin!.from('cameras').select('id,name,location,stream_url,username_encrypted,password_encrypted,status,ai_enabled,recording_enabled,type,recorder_id,channel').eq('tenant_id', tenantId).or(`agent_id.eq.${req.edgeAgent.id},agent_id.is.null`);
   if (error) return res.status(500).json({ success: false, error: error.message });
   const cameras = (data || []).map((c: any) => ({ ...c, username: decryptSecret(c.username_encrypted), password: decryptSecret(c.password_encrypted) }));
   res.json({ success: true, cameras });
+});
+
+
+
+// Continuous AI monitoring pipeline. The Edge Agent submits analyzed security events;
+// the cloud stores evidence and only dispatches WhatsApp when the policy threshold is met.
+const alertCooldown = new Map<string, number>();
+const severityRank: Record<string, number> = { LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 };
+
+function shouldNotify(key: string, severity: string, cooldownSeconds = 600) {
+  const now = Date.now();
+  const last = alertCooldown.get(key) || 0;
+  const rank = severityRank[String(severity).toUpperCase()] || 1;
+  if (now - last < cooldownSeconds * 1000 && rank < 4) return false;
+  alertCooldown.set(key, now);
+  return true;
+}
+
+app.post('/api/agent/security-event', requireAgent, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const cameraId = String(b.cameraId || '');
+    const cameraName = String(b.cameraName || cameraId || 'Camera');
+    const severity = String(b.severity || 'LOW').toUpperCase();
+    const confidence = Number(b.confidence || 0);
+    const eventType = String(b.eventType || 'UNUSUAL_BEHAVIOR');
+    const reason = String(b.reason || 'سلوك غير اعتيادي تم رصده بواسطة وكيل المراقبة الذكي');
+    const tenantId = req.edgeAgent.tenant_id;
+    if (!cameraId) return res.status(400).json({ success: false, error: 'cameraId مطلوب' });
+
+    let snapshotUrl = b.snapshotUrl || null;
+    if (b.snapshotBase64 && supabaseAdmin) {
+      const raw = String(b.snapshotBase64).replace(/^data:image\/\w+;base64,/, '');
+      const bytes = Buffer.from(raw, 'base64');
+      const pathName = `${tenantId}/${cameraId}/${Date.now()}.jpg`;
+      const upload = await supabaseAdmin.storage.from('security-evidence').upload(pathName, bytes, { contentType: 'image/jpeg', upsert: false });
+      if (!upload.error) {
+        const pub = supabaseAdmin.storage.from('security-evidence').getPublicUrl(pathName);
+        snapshotUrl = pub.data.publicUrl;
+      }
+    }
+
+    const id = crypto.randomUUID();
+    const row = { id, tenant_id: tenantId, camera_id: cameraId, camera_name: cameraName, timestamp: b.timestamp || new Date().toISOString(), event_type: eventType, severity, confidence, person_name: b.personName || null, snapshot_url: snapshotUrl, video_clip_url: b.videoClipUrl || null, reason, review_status: 'PENDING' };
+    if (supabaseAdmin) {
+      const { error } = await supabaseAdmin.from('behavior_events').insert(row);
+      if (error) return res.status(500).json({ success: false, error: error.message });
+    }
+
+    const notifyThreshold = String(process.env.AI_ALERT_MIN_SEVERITY || 'HIGH').toUpperCase();
+    const thresholdRank = severityRank[notifyThreshold] || 3;
+    const eligible = (severityRank[severity] || 1) >= thresholdRank && confidence >= Number(process.env.AI_ALERT_MIN_CONFIDENCE || 0.80);
+    const key = `${tenantId}:${cameraId}:${eventType}`;
+    let notified = false;
+    if (eligible && shouldNotify(key, severity, Number(process.env.AI_ALERT_COOLDOWN_SECONDS || 600))) {
+      const targetPhone = b.alertPhone || customerWhatsAppConfig.phoneNumber;
+      const instance = b.instanceName || customerWhatsAppConfig.instanceName || process.env.EVOLUTION_DEFAULT_INSTANCE;
+      if (targetPhone && instance && evolutionBaseUrl() && process.env.EVOLUTION_API_KEY) {
+        const evidence = snapshotUrl ? `\n🖼️ الصورة: ${snapshotUrl}` : '';
+        const text = `🚨 *تنبيه أمني من نظام أمان*\n\n📌 الحدث: ${eventType}\n📍 الكاميرا: ${cameraName}\n⚠️ الخطورة: ${severity}\n🎯 الثقة: ${(confidence * 100).toFixed(0)}%\n🕒 الوقت: ${new Date(row.timestamp).toLocaleString('ar-YE')}\n📝 ${reason}${evidence}`;
+        try {
+          await evolutionRequest(`/message/sendText/${encodeURIComponent(instance)}`, { method: 'POST', body: JSON.stringify({ number: cleanPhone(targetPhone), textMessage: { text }, options: { delay: 500, presence: 'composing' } }) });
+          notified = true;
+        } catch (e) { console.error('Agent alert WhatsApp failed:', e); }
+      }
+    }
+    res.json({ success: true, eventId: id, eligibleForAlert: eligible, whatsappNotified: notified, snapshotUrl });
+  } catch (error: any) { res.status(500).json({ success: false, error: error.message }); }
+});
+
+app.get('/api/agent/monitoring-policy', requireAgent, async (req, res) => {
+  res.json({ success: true, policy: {
+    enabled: process.env.AI_MONITORING_ENABLED !== 'false',
+    intervalSeconds: Number(process.env.AI_MONITOR_INTERVAL_SECONDS || 5),
+    minConfidence: Number(process.env.AI_ANALYSIS_MIN_CONFIDENCE || 0.75),
+    alertMinSeverity: process.env.AI_ALERT_MIN_SEVERITY || 'HIGH',
+    alertMinConfidence: Number(process.env.AI_ALERT_MIN_CONFIDENCE || 0.80),
+    cooldownSeconds: Number(process.env.AI_ALERT_COOLDOWN_SECONDS || 600),
+    workingHours: process.env.AI_WORKING_HOURS || '08:00-17:00',
+    restrictedZones: (process.env.AI_RESTRICTED_ZONES || '').split(',').map(x => x.trim()).filter(Boolean)
+  }});
 });
 
 // Optional Claude agent bridge. It plans/answers operational tasks; execution is kept on explicit internal APIs.

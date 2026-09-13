@@ -22,6 +22,20 @@ services:
         value: aman_default
       - key: EVOLUTION_WEBHOOK_SECRET
         sync: false
+      - key: AI_MONITORING_ENABLED
+        value: 'true'
+      - key: AI_MONITOR_INTERVAL_SECONDS
+        value: '10'
+      - key: AI_ANALYSIS_MIN_CONFIDENCE
+        value: '0.75'
+      - key: AI_ALERT_MIN_SEVERITY
+        value: HIGH
+      - key: AI_ALERT_MIN_CONFIDENCE
+        value: '0.80'
+      - key: AI_ALERT_COOLDOWN_SECONDS
+        value: '600'
+      - key: AI_WORKING_HOURS
+        value: '08:00-17:00'
       - key: CREDENTIAL_ENCRYPTION_KEY
         sync: false
       - key: ANTHROPIC_API_KEY
