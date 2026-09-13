@@ -981,52 +981,19 @@ app.get(
   }
 );
 
-app.post(
-  '/api/customer/whatsapp-settings',
-  async (req, res) => {
-    try {
-      const {
-        phoneNumber,
-        customerName,
-        instanceName,
-        enabled,
-        alertMode,
-        minSeverity,
-        callRingtoneEnabled,
-        autoPlayVoiceBriefing,
-        language,
-      } = req.body || {};
 
-      const settings =
-        await saveWhatsAppConfig(
-          req,
-          {
-            phoneNumber,
-            customerName,
-            instanceName,
-            enabled,
-            alertMode,
-            minSeverity,
-            callRingtoneEnabled,
-            autoPlayVoiceBriefing,
-            language,
-          }
-        );
-
-      res.json({
-        success: true,
-        settings,
-        provider:
-          'EVOLUTION_API',
-      });
-    } catch (e: any) {
-      res.status(500).json({
-        success: false,
-        error: e.message,
-      });
-    }
+     app.get('/api/customer/whatsapp-settings', async (req, res) => {
+  try {
+    const config = await getWhatsAppConfig(req);
+    return res.status(200).json({ success: true, data: config });
+  } catch (err: any) {
+    console.error('Error in whatsapp-settings API:', err.message);
+    return res.status(400).json({ 
+      success: false, 
+      message: err.message || 'فشل جلب الإعدادات' 
+    });
   }
-);
+});
 
 app.post(
   '/api/whatsapp/instance/create',
