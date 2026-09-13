@@ -477,9 +477,22 @@ app.get('/api/notifications/whatsapp/logs', async (req, res) => {
 
 app.post('/api/notifications/whatsapp/dispatch', async (req, res) => {
   try {
-    const customerWhatsAppConfig = await getWhatsAppConfig(req);
-    const { phoneNumber, action = 'MESSAGE', incidentId = `INC-${Date.now().toString(36).toUpperCase()}`, incidentTitle = 'تنبيه أمني عاجل', reason = 'تم رصد نشاط يتطلب التحقق', cameraName = 'الموقع', severity = 'CRITICAL', instanceName } = req.body || {};
-    const targetPhone = phoneNumber || customerWhatsAppConfig.phoneNumber;
+    const {
+  clientNumber,
+  phoneNumber,
+  action = 'MESSAGE',
+  incidentId = `INC-${Date.now().toString(36).toUpperCase()}`,
+  incidentTitle = 'تنبيه أمني عاجل',
+  reason = 'تم رصد نشاط يتطلب التحقق',
+  cameraName = 'الموقع',
+  severity = 'CRITICAL',
+  instanceName
+} = req.body || {};
+
+const targetPhone =
+  clientNumber ||
+  phoneNumber ||
+  customerWhatsAppConfig.phoneNumber;
     if (!targetPhone) return res.status(400).json({ success: false, error: 'رقم العميل مطلوب' });
     if (!evolutionBaseUrl() || !process.env.EVOLUTION_API_KEY) return res.status(503).json({ success: false, error: 'Evolution API غير مضبوط على الخادم' });
     const instance = instanceName || customerWhatsAppConfig.instanceName || process.env.EVOLUTION_DEFAULT_INSTANCE;
@@ -507,8 +520,18 @@ app.post('/api/notifications/whatsapp/test', async (req, res) => {
 async function dispatchThroughInternal(req: any, res: any) {
   try {
     const customerWhatsAppConfig = await getWhatsAppConfig(req);
-    const { phoneNumber, incidentId = `TEST-${Date.now()}`, message, instanceName } = req.body || {};
-    const targetPhone = phoneNumber || customerWhatsAppConfig.phoneNumber;
+    const {
+  clientNumber,
+  phoneNumber,
+  incidentId = `TEST-${Date.now()}`,
+  message,
+  instanceName
+} = req.body || {};
+
+const targetPhone =
+  clientNumber ||
+  phoneNumber ||
+  customerWhatsAppConfig.phoneNumber;
     const instance = instanceName || customerWhatsAppConfig.instanceName || process.env.EVOLUTION_DEFAULT_INSTANCE;
     if (!targetPhone || !instance) return res.status(400).json({ success: false, error: 'رقم العميل وinstanceName مطلوبان' });
     const text = message || `✅ اختبار حقيقي لربط واتساب من نظام أمان\nرقم الاختبار: ${incidentId}`;
