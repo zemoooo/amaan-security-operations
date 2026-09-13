@@ -802,7 +802,7 @@ app.post('/api/auth/resend-verification', async (req, res) => {
 });
 
 // 8.1 Register Real Customer Account with Email & Machine ID
-app.post('/api/auth/register', (req, res) => {
+app.post('/api/auth/register', async (req, res) => {
   try {
     const { email, password, name, phone, companyName, machineId } = req.body;
     if (!email || !name) {
