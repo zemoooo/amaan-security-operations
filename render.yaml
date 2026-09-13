@@ -19,7 +19,7 @@ services:
       - key: EVOLUTION_API_KEY
         sync: false
       - key: EVOLUTION_DEFAULT_INSTANCE
-        value: aman_default
+        sync: false
       - key: EVOLUTION_WEBHOOK_SECRET
         sync: false
       - key: AI_MONITORING_ENABLED
@@ -43,4 +43,24 @@ services:
       - key: CLAUDE_MODEL
         value: claude-sonnet-5
       - key: APP_URL
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: '587'
+      - key: SMTP_SECURE
+        value: 'false'
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: SUPER_ADMIN_EMAIL
+        sync: false
+      - key: SUPER_ADMIN_PASSWORD
+        sync: false
+      - key: SUPER_ADMIN_NAME
+        sync: false
+      - key: LICENSE_SECRET_SALT
         sync: false

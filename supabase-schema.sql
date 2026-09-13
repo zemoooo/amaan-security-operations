@@ -68,6 +68,11 @@ CREATE TABLE IF NOT EXISTS public.customer_whatsapp_settings (
     language TEXT DEFAULT 'ar',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
 );
+ALTER TABLE public.customer_whatsapp_settings ADD COLUMN IF NOT EXISTS connection_state TEXT DEFAULT 'disconnected';
+ALTER TABLE public.customer_whatsapp_settings ADD COLUMN IF NOT EXISTS connected_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE public.customer_whatsapp_settings ADD COLUMN IF NOT EXISTS last_qr_at TIMESTAMP WITH TIME ZONE;
+CREATE INDEX IF NOT EXISTS idx_customer_whatsapp_instance ON public.customer_whatsapp_settings(instance_name);
+
 
 -- 4. Employees Table
 CREATE TABLE public.employees (
@@ -194,7 +199,7 @@ CREATE TABLE public.audit_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- RLS (Row Level Security) - Enabled but set to allow all for demo purposes
+-- RLS (Row Level Security) - legacy compatibility policies; harden these for direct browser access before production
 ALTER TABLE public.tenants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cameras ENABLE ROW LEVEL SECURITY;
@@ -286,3 +291,73 @@ ON CONFLICT (id) DO NOTHING;
 CREATE INDEX IF NOT EXISTS idx_cameras_agent_id ON public.cameras(agent_id);
 CREATE INDEX IF NOT EXISTS idx_behavior_events_tenant_camera_time ON public.behavior_events(tenant_id, camera_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_edge_agents_tenant_active ON public.edge_agents(tenant_id, is_active);
+
+
+-- ============================================================
+-- REAL PRODUCTION DATA: subscribers, persistent email verification,
+-- persistent licenses and persistent WhatsApp settings.
+-- This section contains NO demo/customer records.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.subscribers (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  name TEXT NOT NULL,
+  phone TEXT DEFAULT '',
+  company_name TEXT DEFAULT '',
+  machine_id TEXT DEFAULT '',
+  role TEXT NOT NULL DEFAULT 'OWNER',
+  email_verified BOOLEAN NOT NULL DEFAULT false,
+  email_verified_at TIMESTAMPTZ,
+  total_paid NUMERIC(12,2) NOT NULL DEFAULT 0,
+  registered_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_active_at TIMESTAMPTZ,
+  status TEXT NOT NULL DEFAULT 'TRIAL'
+);
+
+CREATE TABLE IF NOT EXISTS public.subscriber_licenses (
+  id TEXT PRIMARY KEY,
+  subscriber_id TEXT NOT NULL REFERENCES public.subscribers(id) ON DELETE CASCADE,
+  machine_id TEXT NOT NULL,
+  activation_key TEXT NOT NULL,
+  period TEXT NOT NULL,
+  period_label_ar TEXT,
+  customer_email TEXT,
+  customer_name TEXT,
+  customer_phone TEXT,
+  company_name TEXT,
+  amount_paid NUMERIC(12,2) DEFAULT 0,
+  currency TEXT DEFAULT 'SAR',
+  status TEXT DEFAULT 'ACTIVE',
+  activated_at TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ NOT NULL,
+  notes TEXT DEFAULT '',
+  is_locked BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.email_verification_tokens (
+  token TEXT PRIMARY KEY,
+  subscriber_id TEXT NOT NULL REFERENCES public.subscribers(id) ON DELETE CASCADE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.customer_whatsapp_settings
+  ADD COLUMN IF NOT EXISTS call_ringtone_enabled BOOLEAN DEFAULT false;
+ALTER TABLE public.customer_whatsapp_settings
+  ADD COLUMN IF NOT EXISTS auto_play_voice_briefing BOOLEAN DEFAULT false;
+
+ALTER TABLE public.subscribers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.subscriber_licenses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.email_verification_tokens ENABLE ROW LEVEL SECURITY;
+
+CREATE INDEX IF NOT EXISTS idx_subscribers_tenant ON public.subscribers(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_subscribers_email ON public.subscribers(email);
+CREATE INDEX IF NOT EXISTS idx_subscriber_licenses_machine ON public.subscriber_licenses(machine_id);
+CREATE INDEX IF NOT EXISTS idx_subscriber_licenses_subscriber ON public.subscriber_licenses(subscriber_id);
+CREATE INDEX IF NOT EXISTS idx_email_verification_expires ON public.email_verification_tokens(expires_at);
+
+-- The server uses the Supabase service role. Do not create public read/write
+-- policies for these tables.

@@ -169,8 +169,7 @@ export const EvidenceVideoModal: React.FC<EvidenceVideoModalProps> = ({ incident
               {/* Snapshot / Video Simulator */}
               <img
                 src={
-                  incident.videoEvidence.snapshots[selectedSnapshotIdx] ||
-                  'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&auto=format&fit=crop&q=80'
+                  incident.videoEvidence.snapshots[selectedSnapshotIdx] || ''
                 }
                 alt="Video Evidence Frame"
                 className="w-full h-full object-cover"

@@ -4,8 +4,8 @@ import * as db from '../lib/supabaseServices';
 
 const DEFAULT_TENANT: Tenant = {
   id: 'default-tenant',
-  name: 'مساحة العمل (غير متصل)',
-  nameEn: 'Workspace (Offline)',
+  name: 'مساحة العمل المحلية',
+  nameEn: 'Local Workspace',
   planId: 'FREE',
   status: 'ACTIVE',
   trialEndsAt: new Date().toISOString(),
@@ -29,7 +29,7 @@ const DEFAULT_USER: User = {
   tenantId: 'default-tenant',
   name: 'زائر',
   email: '',
-  role: 'OWNER', // Provide necessary role to prevent UI lockouts if DB is empty
+  role: 'OWNER',
   permissions: [],
   isActive: true,
   createdAt: new Date().toISOString()
@@ -124,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (result.success && result.user) {
         const newUser: User = {
           id: result.user.id,
-          tenantId: 'tenant-aman-logistics',
+          tenantId: '',
           name: result.user.name,
           email: result.user.email,
           role: result.user.role,
@@ -170,7 +170,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (result.success && result.user) {
         const loggedUser: User = {
           id: result.user.id,
-          tenantId: result.user.role === 'SUPER_ADMIN' ? 'system-central' : 'tenant-aman-logistics',
+          tenantId: result.user.tenantId || (result.user.role === 'SUPER_ADMIN' ? 'system-central' : ''),
           name: result.user.name,
           email: result.user.email,
           role: result.user.role,

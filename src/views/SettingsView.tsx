@@ -81,18 +81,17 @@ interface EnvStatus {
 
 export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenWhatsAppModal }) => {
   const { t } = useLanguageTheme();
-  const { addAuditLog } = useAuth();
+  const { addAuditLog, currentTenant, currentUser } = useAuth();
   const { 
     customerWhatsAppSettings, 
     updateCustomerWhatsAppSettings, 
-    triggerWhatsAppCall 
   } = useLiveCCTV();
 
   const [activeTab, setActiveTab] = useState<'ENV_VARS' | 'AI_PARAMS'>('ENV_VARS');
 
   // Customer WhatsApp local state
-  const [custPhone, setCustPhone] = useState(customerWhatsAppSettings.phoneNumber || '+966501234567');
-  const [custAlertMode, setCustAlertMode] = useState<WhatsAppAlertMode>(customerWhatsAppSettings.alertMode || 'MESSAGE_AND_CALL');
+  const [custPhone, setCustPhone] = useState(customerWhatsAppSettings.phoneNumber || '');
+  const [custAlertMode, setCustAlertMode] = useState<WhatsAppAlertMode>('MESSAGE_ONLY');
   const [custSavedFeedback, setCustSavedFeedback] = useState(false);
 
   useEffect(() => {
@@ -118,7 +117,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenWhatsAppModal 
   const [personConfidence, setPersonConfidence] = useState(0.8);
   const [loiteringSeconds, setLoiteringSeconds] = useState(30);
   const [theftSensitivity, setTheftSensitivity] = useState<'HIGH' | 'MEDIUM' | 'LOW'>('HIGH');
-  const [whatsAppProvider, setWhatsAppProvider] = useState<'META_CLOUD_API' | 'TWILIO_BUSINESS' | 'LOCAL_GATEWAY'>('META_CLOUD_API');
+  const [whatsAppProvider] = useState<'EVOLUTION_API'>('EVOLUTION_API');
   const [alertEmail, setAlertEmail] = useState('security-ops@aman-logistics.com');
   const [retentionDays, setRetentionDays] = useState(45);
   const [isSaved, setIsSaved] = useState(false);
@@ -134,10 +133,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenWhatsAppModal 
   const [testingWa, setTestingWa] = useState(false);
   const [waTestResult, setWaTestResult] = useState<string | null>(null);
 
-  const [seedingSupabase, setSeedingSupabase] = useState(false);
-  const [seedResult, setSeedResult] = useState<{success: boolean, msg: string} | null>(null);
 
-  const [testRtspUrl, setTestRtspUrl] = useState('rtsp://admin:pass@192.168.1.105:554/live/ch0');
+  const [testRtspUrl, setTestRtspUrl] = useState('');
   const [testingRtsp, setTestingRtsp] = useState(false);
   const [rtspResult, setRtspResult] = useState<string | null>(null);
 
@@ -148,42 +145,42 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onOpenWhatsAppModal 
 GEMINI_API_KEY=
 
 # APP_URL: The URL where this applet is hosted.
-APP_URL=https://ais-dev-wuskjww52clx73il5m5bwk-392148452478.europe-west2.run.app
+APP_URL=
 
 # Multi-Tenant Database
-DATABASE_URL=postgresql://cctv_saas:cctv_secure_pass@postgres:5432/cctv_platform
+DATABASE_URL=
 
 # Message Queue & Cache
-REDIS_URL=redis://redis:6379/0
+REDIS_URL=
 
 # JWT Authentication & RBAC
-JWT_SECRET=cctv_ai_agent_jwt_super_secret_key_32chars_min
+JWT_SECRET=
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=1440
 
 # AI Video Analysis Service
-AI_SERVICE_URL=http://ai-service:8001
+AI_SERVICE_URL=
 AI_INFERENCE_DEVICE=cuda
 AI_DETECTION_CONFIDENCE_THRESHOLD=0.65
 AI_FACE_SIMILARITY_THRESHOLD=0.72
 
 # Object Storage (MinIO / S3 for CCTV Evidence Clips)
-S3_ENDPOINT=http://minio:9000
-S3_ACCESS_KEY=minioadmin
-S3_SECRET_KEY=minioadmin
-S3_BUCKET_NAME=cctv-evidence
+S3_ENDPOINT=
+S3_ACCESS_KEY=
+S3_SECRET_KEY=
+S3_BUCKET_NAME=
 S3_REGION=us-east-1
 
 # Notifications (Email & WhatsApp Business)
-SMTP_HOST=smtp.example.com
+SMTP_HOST=
 SMTP_PORT=587
-SMTP_USER=notifications@cctv-agent.com
-SMTP_PASSWORD=smtp_password
+SMTP_USER=
+SMTP_PASS=
 WHATSAPP_API_KEY=
-WHATSAPP_PHONE_NUMBER_ID=109876543210
+WHATSAPP_PHONE_NUMBER_ID=
 
-# Demo Mode & Local Stream Simulation
-DEMO_MODE=true
+# Real Mode - no demo data
+DEMO_MODE=false
 RTSP_TIMEOUT_SECONDS=10`;
 
   const handleCopyEnv = () => {
@@ -263,15 +260,19 @@ RTSP_TIMEOUT_SECONDS=10`;
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phoneNumber: custPhone || customerWhatsAppSettings.phoneNumber || '+966501234567',
-          incidentId: 'INC-2026-0912-TEST',
-          message: '🚨 تنبيه أمني تجريبي: رصد حركة خارج أوقات العمل في مستودع البضائع الحساسة.',
+          tenantId: currentTenant.id,
+          customerEmail: currentUser.email,
+          phoneNumber: custPhone || customerWhatsAppSettings.phoneNumber || '',
+          instanceName: customerWhatsAppSettings.instanceName || '',
+          incidentId: `TEST-${Date.now()}`,
+          message: '✅ اختبار حقيقي من نظام أمان عبر Evolution API. إذا وصلت هذه الرسالة فربط WhatsApp يعمل بنجاح.',
         }),
       });
       const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'تعذر إرسال الرسالة');
       setWaTestResult(t(
-        `نجح الفحص: تم إرسال رسالة WhatsApp تجريبية إلى ${custPhone} (${data.provider})`,
-        `Success: Test WhatsApp message sent to ${custPhone} (${data.provider})`
+        `نجح الاختبار الحقيقي: وصلت الرسالة إلى ${custPhone} عبر Evolution API`,
+        `Real test succeeded: message sent to ${custPhone} via Evolution API`
       ));
     } catch (error: any) {
       setWaTestResult(`خطأ في الإرسال: ${error.message}`);
@@ -369,7 +370,7 @@ RTSP_TIMEOUT_SECONDS=10`;
                   </span>
                   {envStatus?.demoMode && (
                     <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-blue-950 text-blue-300 border border-blue-800">
-                      DEMO_MODE=ACTIVE
+                      REAL_MODE
                     </span>
                   )}
                 </div>
@@ -411,7 +412,7 @@ RTSP_TIMEOUT_SECONDS=10`;
                       ? 'bg-emerald-950 text-emerald-300 border-emerald-800' 
                       : 'bg-amber-950 text-amber-300 border-amber-800'
                   }`}>
-                    {envStatus?.gemini.configured ? 'CONFIGURED / LIVE' : 'SMART SIMULATION'}
+                    {envStatus?.gemini.configured ? 'CONFIGURED / LIVE' : 'NOT CONFIGURED'}
                   </span>
                 </div>
                 <div className="space-y-1.5 text-slate-300 font-mono text-[11px]">
@@ -464,34 +465,6 @@ RTSP_TIMEOUT_SECONDS=10`;
                   <p><strong className="text-slate-400">Entities:</strong> Cameras, Tenants, AuditLogs, Attendance, Products</p>
                 </div>
               </div>
-
-              <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setSeedingSupabase(true);
-                    setSeedResult(null);
-                    try {
-                      await db.seedMockDataToSupabase();
-                      setSeedResult({ success: true, msg: 'تم رفع البيانات الافتراضية بنجاح إلى Supabase!' });
-                    } catch (err: any) {
-                      setSeedResult({ success: false, msg: err.message || 'فشل التحديث' });
-                    }
-                    setSeedingSupabase(false);
-                  }}
-                  disabled={seedingSupabase}
-                  className="w-full py-2 rounded-xl bg-blue-950/70 hover:bg-blue-900/80 border border-blue-800 text-blue-200 font-semibold text-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                >
-                  <Database className="w-3.5 h-3.5 text-blue-400" />
-                  <span>{seedingSupabase ? 'جاري رفع البيانات...' : 'تصدير البيانات التجريبية إلى Supabase'}</span>
-                </button>
-                {seedResult && (
-                  <div className={`p-2 rounded-lg text-[10px] ${seedResult.success ? 'bg-emerald-950/50 text-emerald-400 border border-emerald-900/50' : 'bg-red-950/50 text-red-400 border border-red-900/50'}`}>
-                    {seedResult.msg}
-                  </div>
-                )}
-              </div>
-
               <div className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 text-[11px] text-slate-400">
                 {t(
                   'يدعم الربط السحابي مع Cloud SQL أو Supabase، أو التشغيل المحلي في المستودع عبر Docker.',
@@ -620,7 +593,7 @@ RTSP_TIMEOUT_SECONDS=10`;
                       dir="ltr"
                       value={custPhone}
                       onChange={e => setCustPhone(e.target.value)}
-                      placeholder="+966501234567"
+                      placeholder=""
                       className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 text-xs font-mono focus:outline-none focus:border-emerald-500"
                     />
                     <button
@@ -647,8 +620,6 @@ RTSP_TIMEOUT_SECONDS=10`;
                       className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 text-xs focus:outline-none focus:border-emerald-500"
                     >
                       <option value="MESSAGE_ONLY">{t('💬 إرسال رسالة واتساب فقط', 'Message Only')}</option>
-                      <option value="CALL_ONLY">{t('📞 إجراء مكالمة صوتية عبر واتساب فقط', 'Voice Call Only')}</option>
-                      <option value="MESSAGE_AND_CALL">{t('🔔 رسالة + مكالمة صوتية معاً (موصى به)', 'Both: Message & Voice Call')}</option>
                     </select>
                   </div>
 
@@ -675,20 +646,6 @@ RTSP_TIMEOUT_SECONDS=10`;
                   >
                     <Send className="w-3 h-3 text-emerald-400" />
                     <span>{testingWa ? t('جاري الإرسال...', 'Sending...') : t('تجربة رسالة', 'Test Message')}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => triggerWhatsAppCall({
-                      title: 'مكالمة واتساب تجريبية من صفحة الإعدادات',
-                      reason: 'فحص استجابة الاتصال الهاتفي الصوتي المشفر بالذكاء الاصطناعي',
-                      cameraName: 'المستودع الرئيسي - ممر 04',
-                      severity: 'CRITICAL',
-                    })}
-                    className="py-2 px-2 rounded-xl bg-cyan-950/80 hover:bg-cyan-900/90 border border-cyan-800 text-cyan-200 font-semibold text-[11px] transition flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <PhoneCall className="w-3 h-3 text-cyan-400" />
-                    <span>{t('تجربة مكالمة', 'Test Call')}</span>
                   </button>
                 </div>
 
@@ -731,7 +688,7 @@ RTSP_TIMEOUT_SECONDS=10`;
                 type="text"
                 value={testRtspUrl}
                 onChange={e => setTestRtspUrl(e.target.value)}
-                placeholder="rtsp://admin:password@192.168.1.100:554/ch0"
+                placeholder="rtsp://admin:password@:554/ch0"
                 className="flex-1 px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-200 font-mono text-xs focus:outline-none focus:border-cyan-500"
               />
               <button
@@ -991,7 +948,7 @@ RTSP_TIMEOUT_SECONDS=10`;
                     dir="ltr"
                     value={custPhone}
                     onChange={e => setCustPhone(e.target.value)}
-                    placeholder="+966501234567"
+                    placeholder=""
                     className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-slate-200 text-xs font-mono focus:outline-none focus:border-emerald-500"
                   />
                   <button
@@ -1022,30 +979,16 @@ RTSP_TIMEOUT_SECONDS=10`;
                   className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-slate-200 text-xs focus:outline-none focus:border-emerald-500"
                 >
                   <option value="MESSAGE_ONLY">{t('💬 إرسال رسالة واتساب فقط برابط الفيديو الجنائي', 'Message Only (with 70s video link)')}</option>
-                  <option value="CALL_ONLY">{t('📞 إجراء مكالمة صوتية عبر واتساب فقط', 'Voice Call Only (urgent briefing)')}</option>
-                  <option value="MESSAGE_AND_CALL">{t('🔔 رسالة + مكالمة صوتية معاً (اختياري / موصى به)', 'Both: Message + Voice Call')}</option>
                 </select>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  {t('يمكنك تخصيص هل يقوم الإيجنت بالمراسلة فقط، أم الاتصال هاتفياً، أم كلاهما.', 'Select whether agent sends message, calls phone, or both.')}
+                  {t('يستخدم الإيجنت رسائل WhatsApp الحقيقية عبر Evolution API فقط.', 'Agent uses real WhatsApp messages through Evolution API only.')}
                 </p>
               </div>
 
-              <div>
-                <label className="text-slate-300 font-semibold block mb-1">
-                  {t('مزود WhatsApp Business المعتمد:', 'WhatsApp Business Provider:')}
-                </label>
-                <select
-                  value={whatsAppProvider}
-                  onChange={e => setWhatsAppProvider(e.target.value as any)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-slate-200 text-xs focus:outline-none focus:border-emerald-500"
-                >
-                  <option value="META_CLOUD_API">Meta Official WhatsApp Cloud API</option>
-                  <option value="TWILIO_BUSINESS">Twilio WhatsApp Messaging API</option>
-                  <option value="LOCAL_GATEWAY">On-Premise WhatsApp Local Gateway</option>
-                </select>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  {t('تشفير تام وحماية الامتثال لسياسات Meta للأعمال.', 'Compliant with Meta Business messaging policies.')}
-                </p>
+              <div className="p-4 rounded-2xl bg-emerald-950/30 border border-emerald-800/60">
+                <label className="text-slate-300 font-semibold block mb-1">{t('مزود WhatsApp المعتمد:', 'WhatsApp Provider')}</label>
+                <div className="text-emerald-300 font-bold text-sm">Evolution API</div>
+                <p className="text-[11px] text-slate-500 mt-1">{t('Evolution API هو مزود WhatsApp الوحيد المعتمد في AMAN. يتم الربط عبر QR وحفظ الجلسة والإعدادات في الخادم وSupabase.', 'Evolution API is the only WhatsApp provider enabled in AMAN. Pair via QR and persist the session/settings on the server and Supabase.')}</p>
               </div>
 
               <div>
@@ -1069,21 +1012,7 @@ RTSP_TIMEOUT_SECONDS=10`;
                 className="px-3.5 py-1.5 rounded-xl bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{testingWa ? t('جاري إرسال الرسالة...', 'Sending...') : t('إرسال رسالة تجريبية للرقم', 'Test Send Message')}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => triggerWhatsAppCall({
-                  title: 'مكالمة أمنية تجريبية',
-                  reason: 'فحص الاتصال الصوتي السريع للإيجنت',
-                  cameraName: 'المستودع الرئيسي - الرف 04',
-                  severity: 'CRITICAL',
-                })}
-                className="px-3.5 py-1.5 rounded-xl bg-cyan-950/90 hover:bg-cyan-900 border border-cyan-800 text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-              >
-                <PhoneCall className="w-3.5 h-3.5 text-cyan-400" />
-                <span>{t('تجربة اتصال صوتي بالعميل الآن', 'Test Voice Call Now')}</span>
+                <span>{testingWa ? t('جاري إرسال الرسالة...', 'Sending...') : t('إرسال رسالة اختبار حقيقية للرقم', 'Test Send Message')}</span>
               </button>
             </div>
           </div>

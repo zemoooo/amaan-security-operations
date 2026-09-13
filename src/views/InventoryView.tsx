@@ -26,12 +26,23 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onOpenZoneDrawer }
   const { 
     inventoryProducts, 
     outgoingEvents, 
-    triggerInventoryCountUpdate 
+    triggerInventoryCountUpdate,
+    addInventoryProduct
   } = useLiveCCTV();
 
   const [activeTab, setActiveTab] = useState<'PRODUCTS' | 'OUTGOING'>('PRODUCTS');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDiscrepancyOnly, setFilterDiscrepancyOnly] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [productName, setProductName] = useState('');
+  const [productSku, setProductSku] = useState('');
+  const [productWarehouse, setProductWarehouse] = useState('');
+  const [productZone, setProductZone] = useState('');
+  const [productCamera, setProductCamera] = useState('');
+  const [unitsPerCarton, setUnitsPerCarton] = useState(1);
+  const [expectedQuantity, setExpectedQuantity] = useState(0);
+  const [lowStockThreshold, setLowStockThreshold] = useState(0);
+  const [savingProduct, setSavingProduct] = useState(false);
 
   // Calibrate modal state
   const [calibratingProduct, setCalibratingProduct] = useState<InventoryProduct | null>(null);
@@ -84,6 +95,14 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onOpenZoneDrawer }
         </div>
 
         <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setShowProductModal(true)}
+            className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{t('إضافة صنف ومقاس الكرتون', 'Add Product & Carton Size')}</span>
+          </button>
+
           <button
             onClick={onOpenZoneDrawer}
             className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition shadow-lg shadow-cyan-500/20 flex items-center gap-1.5 cursor-pointer"
@@ -405,6 +424,39 @@ export const InventoryView: React.FC<InventoryViewProps> = ({ onOpenZoneDrawer }
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {showProductModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+          <form onSubmit={async e => {
+            e.preventDefault();
+            if (!productName.trim()) return;
+            setSavingProduct(true);
+            try {
+              await addInventoryProduct({ name: productName, sku: productSku, warehouse: productWarehouse, zone: productZone, cameraName: productCamera, unitsPerCarton, expectedQuantity, lowStockThreshold });
+              setShowProductModal(false);
+              setProductName(''); setProductSku(''); setProductWarehouse(''); setProductZone(''); setProductCamera('');
+              setUnitsPerCarton(1); setExpectedQuantity(0); setLowStockThreshold(0);
+            } catch (err: any) { alert(err.message || 'تعذر حفظ الصنف'); }
+            finally { setSavingProduct(false); }
+          }} className="w-full max-w-lg bg-slate-900 border border-slate-700 rounded-3xl p-6 space-y-4">
+            <h3 className="text-lg font-bold text-white">{t('إضافة بيانات المخزون الحقيقية', 'Add Real Inventory Data')}</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <input required value={productName} onChange={e=>setProductName(e.target.value)} placeholder="اسم الصنف" className="col-span-2 p-3 bg-slate-950 border border-slate-700 rounded-xl text-white" />
+              <input value={productSku} onChange={e=>setProductSku(e.target.value)} placeholder="SKU / كود الصنف" className="p-3 bg-slate-950 border border-slate-700 rounded-xl text-white" />
+              <input value={productWarehouse} onChange={e=>setProductWarehouse(e.target.value)} placeholder="المستودع" className="p-3 bg-slate-950 border border-slate-700 rounded-xl text-white" />
+              <input value={productZone} onChange={e=>setProductZone(e.target.value)} placeholder="منطقة/رف" className="p-3 bg-slate-950 border border-slate-700 rounded-xl text-white" />
+              <input value={productCamera} onChange={e=>setProductCamera(e.target.value)} placeholder="كاميرا العد" className="p-3 bg-slate-950 border border-slate-700 rounded-xl text-white" />
+              <input type="number" min="1" value={unitsPerCarton} onChange={e=>setUnitsPerCarton(Number(e.target.value))} placeholder="قطعة/كرتون" className="p-3 bg-slate-950 border border-slate-700 rounded-xl text-white" />
+              <input type="number" min="0" value={expectedQuantity} onChange={e=>setExpectedQuantity(Number(e.target.value))} placeholder="الكمية الحالية" className="p-3 bg-slate-950 border border-slate-700 rounded-xl text-white" />
+              <input type="number" min="0" value={lowStockThreshold} onChange={e=>setLowStockThreshold(Number(e.target.value))} placeholder="حد التنبيه" className="p-3 bg-slate-950 border border-slate-700 rounded-xl text-white" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={()=>setShowProductModal(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200">إلغاء</button>
+              <button disabled={savingProduct} className="px-4 py-2 rounded-xl bg-cyan-600 text-white font-semibold">{savingProduct ? 'جاري الحفظ...' : 'حفظ البيانات'}</button>
+            </div>
+          </form>
         </div>
       )}
     </div>

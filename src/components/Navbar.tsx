@@ -51,12 +51,10 @@ export const Navbar: React.FC<NavbarProps> = ({
     markNotificationAsRead, 
     markAllNotificationsAsRead, 
     agentHealth, 
-    triggerSimulatedIncident,
     setActiveEvidenceIncident,
     securityIncidents
   } = useLiveCCTV();
 
-  const [showSimulateMenu, setShowSimulateMenu] = useState(false);
   const [showTenantMenu, setShowTenantMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifsDropdown, setShowNotifsDropdown] = useState(false);
@@ -103,106 +101,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Center / Action Toolbar */}
       <div className="flex items-center gap-2">
-        {/* Quick Simulation Trigger Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setShowSimulateMenu(!showSimulateMenu)}
-            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-600/20 to-rose-600/20 hover:from-amber-600/30 hover:to-rose-600/30 border border-amber-500/40 text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-          >
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            <span className="hidden md:inline">{t('محاكاة الأحداث الحية', 'Simulate AI Events')}</span>
-            <ChevronDown className="w-3.5 h-3.5" />
-          </button>
-
-          {showSimulateMenu && (
-            <div className="absolute left-0 sm:right-0 mt-2 w-72 rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl p-2 z-50 flex flex-col gap-1 text-xs">
-              <button
-                onClick={() => {
-                  triggerSimulatedIncident('THEFT');
-                  setShowSimulateMenu(false);
-                }}
-                className="p-2.5 rounded-xl hover:bg-rose-950/60 text-right text-rose-300 flex items-center gap-2.5 transition cursor-pointer"
-              >
-                <ShieldAlert className="w-4 h-4 text-rose-500 flex-shrink-0" />
-                <div>
-                  <p className="font-bold">محاكاة اشتباه سرقة بالمستودع</p>
-                  <span className="text-[10px] text-slate-400">إزالة صندوق خارج الدوام + تنبيه جنائي</span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => {
-                  triggerSimulatedIncident('INTRUSION');
-                  setShowSimulateMenu(false);
-                }}
-                className="p-2.5 rounded-xl hover:bg-amber-950/60 text-right text-amber-300 flex items-center gap-2.5 transition cursor-pointer"
-              >
-                <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                <div>
-                  <p className="font-bold">محاكاة اختراق السياج الشرقي</p>
-                  <span className="text-[10px] text-slate-400">تجاوز خط وهمي افتراضي لسياج المنشأة</span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => {
-                  onOpenFacePunch();
-                  setShowSimulateMenu(false);
-                }}
-                className="p-2.5 rounded-xl hover:bg-cyan-950/60 text-right text-cyan-300 flex items-center gap-2.5 transition cursor-pointer"
-              >
-                <Scan className="w-4 h-4 text-cyan-400 flex-shrink-0" />
-                <div>
-                  <p className="font-bold">محاكي بصمة الوجه بالبوابة (Gate Punch)</p>
-                  <span className="text-[10px] text-slate-400">اختبار موظف مسجل أو شخص مجهول</span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => {
-                  onOpenWhatsApp();
-                  setShowSimulateMenu(false);
-                }}
-                className="p-2.5 rounded-xl hover:bg-emerald-950/60 text-right text-emerald-300 flex items-center gap-2.5 transition cursor-pointer"
-              >
-                <Smartphone className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <div>
-                  <p className="font-bold">معاينة تنبيه WhatsApp للأعمال</p>
-                  <span className="text-[10px] text-slate-400">رسالة تنبيه فورية متوافقة مع شروط Meta</span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => {
-                  onOpenWindowsAgent();
-                  setShowSimulateMenu(false);
-                }}
-                className="p-2.5 rounded-xl hover:bg-blue-950/60 text-right text-blue-300 flex items-center gap-2.5 transition cursor-pointer"
-              >
-                <Laptop className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                <div>
-                  <p className="font-bold">إعداد وكيل Windows Edge Agent</p>
-                  <span className="text-[10px] text-slate-400">ربط خادم محلي عبر Secure Device Token</span>
-                </div>
-              </button>
-
-              <button
-                onClick={() => {
-                  onOpenReports();
-                  setShowSimulateMenu(false);
-                }}
-                className="p-2.5 rounded-xl hover:bg-slate-800 text-right text-slate-300 flex items-center gap-2.5 transition cursor-pointer"
-              >
-                <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                <div>
-                  <p className="font-bold">مركز التقارير والجدولة الآلية</p>
-                  <span className="text-[10px] text-slate-400">تصدير PDF وExcel وجدول Cron دوري</span>
-                </div>
-              </button>
-            </div>
-          )}
-        </div>
-
         {/* Tenant Switcher Dropdown */}
         <div className="relative">
           <button

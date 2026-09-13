@@ -63,7 +63,7 @@ export const SoftwareLockModal: React.FC<SoftwareLockModalProps> = ({ onOpenAuth
     }
   };
 
-  // 1. One-click Super Admin Master Unlock for smarttechyeme@gmail.com
+  // 1. One-click Super Admin Master Unlock for 
   const handleMasterAdminUnlock = async () => {
     setErrorMsg(null);
     setSuccessMsg(null);
@@ -73,7 +73,7 @@ export const SoftwareLockModal: React.FC<SoftwareLockModalProps> = ({ onOpenAuth
       const res = await masterAdminUnlock();
       if (res.success) {
         // Switch user session in AuthContext
-        const adminUser = availableUsers.find(u => u.role === 'SUPER_ADMIN' || u.email === 'smarttechyeme@gmail.com');
+        const adminUser = availableUsers.find(u => u.role === 'SUPER_ADMIN' || u.email === '');
         if (adminUser) {
           switchUser(adminUser.id);
         }
@@ -161,7 +161,7 @@ export const SoftwareLockModal: React.FC<SoftwareLockModalProps> = ({ onOpenAuth
   };
 
   // Super admin profile
-  const superAdminUser = availableUsers.find(u => u.role === 'SUPER_ADMIN' || u.email === 'smarttechyeme@gmail.com');
+  const superAdminUser = availableUsers.find(u => u.role === 'SUPER_ADMIN' || u.email === '');
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto">
@@ -218,7 +218,7 @@ export const SoftwareLockModal: React.FC<SoftwareLockModalProps> = ({ onOpenAuth
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">
-              إذا كنت مدير النظام (<span className="text-amber-300 font-mono font-bold">smarttechyeme@gmail.com</span>) أو ترغب في تجربة البرنامج فوراً، اضغط على أحد الخيارات أدناه للدخول للوحة التحكم:
+              إذا كنت مدير النظام (<span className="text-amber-300 font-mono font-bold"></span>) أو ترغب في تجربة البرنامج فوراً، اضغط على أحد الخيارات أدناه للدخول للوحة التحكم:
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">

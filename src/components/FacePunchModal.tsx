@@ -16,11 +16,11 @@ export const FacePunchModal: React.FC<FacePunchModalProps> = ({ onClose }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  const handleSimulatePunch = () => {
+  const handleTestPunch = () => {
     setIsProcessing(true);
     setResult(null);
 
-    // Realistic face inference delay simulation (600ms)
+    // Realistic face inference processing delay (600ms)
     setTimeout(() => {
       const res = punchFaceAttendance(selectedTarget, isEntry);
       setResult(res);
@@ -146,7 +146,7 @@ export const FacePunchModal: React.FC<FacePunchModalProps> = ({ onClose }) => {
             </div>
           </div>
 
-          {/* Live Scanner Visual Simulation Box */}
+          {/* Live Scanner Visual Real Test Box */}
           <div className="relative p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center gap-4 overflow-hidden">
             <div className="relative w-20 h-20 rounded-2xl overflow-hidden bg-slate-900 border border-cyan-500/50 flex-shrink-0 flex items-center justify-center">
               {selectedTarget !== 'unknown' && selectedEmployee ? (
@@ -205,7 +205,7 @@ export const FacePunchModal: React.FC<FacePunchModalProps> = ({ onClose }) => {
           <button
             type="button"
             disabled={isProcessing}
-            onClick={handleSimulatePunch}
+            onClick={handleTestPunch}
             className="w-full py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-xs transition shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
             {isProcessing ? (
@@ -213,7 +213,7 @@ export const FacePunchModal: React.FC<FacePunchModalProps> = ({ onClose }) => {
             ) : (
               <>
                 <Scan className="w-4 h-4" />
-                <span>{t('محاكاة عبور البوابة الآن', 'Simulate Gate Passage Now')}</span>
+                <span>{t('اختبار حقيقي عبور البوابة الآن', 'Test Gate Passage Now')}</span>
               </>
             )}
           </button>

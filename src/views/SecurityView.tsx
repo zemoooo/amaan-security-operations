@@ -36,7 +36,6 @@ export const SecurityView: React.FC<SecurityViewProps> = ({ onOpenWhatsApp }) =>
     securityIncidents, 
     behaviorEvents, 
     setActiveEvidenceIncident, 
-    triggerSimulatedIncident,
     customerWhatsAppSettings,
     triggerWhatsAppCall
   } = useLiveCCTV();
@@ -93,25 +92,6 @@ export const SecurityView: React.FC<SecurityViewProps> = ({ onOpenWhatsApp }) =>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => triggerSimulatedIncident('THEFT')}
-            className="px-3 py-2 rounded-xl bg-rose-950/80 border border-rose-800 text-rose-300 hover:bg-rose-900 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-            title="محاكاة سرقة بالرف 04 مع إشعار واتساب تلقائي"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-rose-400" />
-            <span>{t('محاكاة اشتباه سرقة', 'Simulate Theft')}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => triggerSimulatedIncident('INTRUSION')}
-            className="px-3 py-2 rounded-xl bg-amber-950/80 border border-amber-800 text-amber-300 hover:bg-amber-900 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-            title="محاكاة تسلل عبر السياج الشرقي"
-          >
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-            <span>{t('محاكاة تسلل سياج', 'Simulate Intrusion')}</span>
-          </button>
 
           {onOpenWhatsApp && (
             <button
@@ -356,7 +336,7 @@ export const SecurityView: React.FC<SecurityViewProps> = ({ onOpenWhatsApp }) =>
                   className="relative aspect-video w-full rounded-2xl overflow-hidden border border-slate-800 cursor-pointer group/img"
                 >
                   <img
-                    src={inc.videoEvidence.snapshots[0] || 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=600'}
+                    src={inc.videoEvidence.snapshots[0] || ''}
                     alt="Evidence Preview"
                     className="w-full h-full object-cover group-hover/img:scale-105 transition duration-300"
                   />

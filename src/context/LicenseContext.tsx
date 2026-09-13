@@ -55,11 +55,11 @@ function getOrCreateMachineId(): string {
     // Generate unique hardware fingerprint seed
     const randPart1 = Math.random().toString(36).substring(2, 6).toUpperCase();
     const randPart2 = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const newId = `AMAN-DEV-${randPart1}-${randPart2}`;
+    const newId = `AMAN-${randPart1}-${randPart2}`;
     localStorage.setItem('aman_cctv_hardware_code', newId);
     return newId;
   } catch {
-    return 'AMAN-DEV-98A2-F41C';
+    return 'AMAN-LOCAL';
   }
 }
 
@@ -67,12 +67,12 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [machineId] = useState<string>(getOrCreateMachineId);
   const [currentLicense, setCurrentLicense] = useState<DeviceLicense | null>(null);
   const [isLocked, setIsLocked] = useState<boolean>(false);
-  const [status, setStatus] = useState<LicenseStatus>('ACTIVE');
-  const [daysRemaining, setDaysRemaining] = useState<number>(30);
-  const [hoursRemaining, setHoursRemaining] = useState<number>(720);
+  const [status, setStatus] = useState<LicenseStatus>('UNACTIVATED');
+  const [daysRemaining, setDaysRemaining] = useState<number>(0);
+  const [hoursRemaining, setHoursRemaining] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
-  const [supportPhone] = useState<string>('+966500123456');
-  const [supportEmail] = useState<string>('smarttechyeme@gmail.com');
+  const [supportPhone] = useState<string>('');
+  const [supportEmail] = useState<string>('');
 
   // Admin states
   const [subscribers, setSubscribers] = useState<SubscriberRecord[]>([]);
@@ -159,7 +159,7 @@ export const LicenseProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Instant Super Admin Bypass & Unlock for smarttechyeme@gmail.com
+  // Instant Super Admin Bypass & Unlock for 
   const masterAdminUnlock = async (): Promise<{ success: boolean; message?: string; error?: string }> => {
     try {
       setLoading(true);

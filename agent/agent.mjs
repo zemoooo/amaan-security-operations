@@ -10,7 +10,8 @@ const execFileAsync = promisify(execFile);
 const CLOUD_URL = String(process.env.AMAN_CLOUD_URL || '').replace(/\/$/, '');
 let TOKEN = process.env.AMAN_AGENT_TOKEN || '';
 const AGENT_NAME = process.env.AMAN_AGENT_NAME || os.hostname();
-const TENANT_ID = process.env.AMAN_TENANT_ID || 'tenant-aman-logistics';
+const TENANT_ID = String(process.env.AMAN_TENANT_ID || '').trim();
+if (!TENANT_ID) throw new Error('AMAN_TENANT_ID is required');
 const VERSION = '2.0.0';
 const INTERVAL_MS = Math.max(3000, Number(process.env.AI_MONITOR_INTERVAL_SECONDS || 10) * 1000);
 const WORKING_HOURS = process.env.AI_WORKING_HOURS || '08:00-17:00';
@@ -78,7 +79,7 @@ function parseJson(text) {
 
 async function analyzeAnthropic(imageBase64, camera, context) {
   if (!ANTHROPIC_KEY) throw new Error('ANTHROPIC_API_KEY is required for AI_PROVIDER=anthropic');
-  const prompt = `أنت مسؤول مراقبة أمنية يعمل بشكل مستمر. حلل لقطة الكاميرا الحالية مقارنة بسياق المكان والوقت. لا تعتبر مجرد وجود شخص حادثاً. ابحث عن سلوك غير طبيعي أو دخول لمنطقة حساسة أو وجود خارج ساعات العمل أو نشاط يستحق تدخل المشرف. لا تتهم شخصاً بجريمة ولا تخترع تفاصيل غير مرئية. إذا كانت الصورة غير واضحة فاخفض الثقة.\n\nالكاميرا: ${camera.name}\nالموقع: ${camera.location || 'غير محدد'}\nالوقت المحلي: ${new Date().toLocaleString('ar-YE')}\nساعات العمل: ${WORKING_HOURS}\nهل نحن خارج الدوام: ${context.afterHours}\nالمناطق الحساسة المعلنة: ${RESTRICTED_ZONES.join('، ') || 'غير محددة'}\n\nأعد JSON فقط بهذا الشكل:\n{"severity":"LOW|MEDIUM|HIGH|CRITICAL","confidence":0.0,"eventType":"NORMAL|AFTER_HOURS_PERSON|RESTRICTED_AREA|UNUSUAL_BEHAVIOR|CROWDING|LINGERING|OTHER","reason":"وصف قصير بالعربية لما يمكن رؤيته فقط","notify":false}`;
+  const prompt = `أنت مسؤول مراقبة أمنية يعمل بشكل مستمر. حلل لقطة الكاميرا الحالية مقارنة بسياق المكان والوقت. لا تعتبر مجرد وجود شخص حادثاً. ابحث عن سلوك غير طبيعي أو دخول لمنطقة حساسة أو وجود خارج ساعات العمل أو نشاط يستحق تدخل المشرف. لا تتهم شخصاً بجريمة ولا تخترع تفاصيل غير مرئية. إذا كانت الصورة غير واضحة فاخفض الثقة.\n\nالكاميرا: ${camera.name}\nالموقع: ${camera.location || 'غير محدد'}\nالوقت المحلي: ${new Date().toLocaleString('ar-YE')}\nساعات العمل: ${WORKING_HOURS}\nهل نحن خارج الدوام: ${context.afterHours}\nالمناطق الحساسة المعلنة: ${RESTRICTED_ZONES.join('، ') || 'غير محددة'}\n\nأعد JSON فقط بهذا الشكل:\n{"severity":"LOW|MEDIUM|HIGH|CRITICAL","confidence":0.0,"eventType":"NORMAL|AFTER_HOURS_PERSON|RESTRICTED_AREA|UNUSUAL_BEHAVIOR|CROWDING|LINGERING|THEFT_SUSPECTED|FIGHT|FALL|TAILGATING|OBJECT_REMOVAL|VEHICLE_ANOMALY|OTHER","reason":"وصف قصير بالعربية لما يمكن رؤيته فقط","notify":false}`;
   const body = { model: AI_MODEL, max_tokens: 700, system: 'أنت محلل فيديو أمني محافظ. لا تختلق هوية أو نية. لا تجعل وجود شخص وحده تنبيهاً.', messages: [{ role: 'user', content: [{ type: 'text', text: prompt }, { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 } }] }] };
   const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' }, body: JSON.stringify(body) });
   const d = await r.json();
@@ -88,7 +89,7 @@ async function analyzeAnthropic(imageBase64, camera, context) {
 
 async function analyzeGemini(imageBase64, camera, context) {
   if (!GEMINI_KEY) throw new Error('GEMINI_API_KEY is required for AI_PROVIDER=gemini');
-  const prompt = `أنت مسؤول مراقبة أمنية مستمر. حلل هذه اللقطة. لا تعتبر وجود شخص عادياً حادثاً. أبلغ فقط عن سلوك غير طبيعي يمكن رؤيته. ساعات العمل ${WORKING_HOURS}; خارج الدوام=${context.afterHours}; المناطق الحساسة=${RESTRICTED_ZONES.join('، ')}. أعد JSON فقط: {"severity":"LOW|MEDIUM|HIGH|CRITICAL","confidence":0.0,"eventType":"NORMAL|AFTER_HOURS_PERSON|RESTRICTED_AREA|UNUSUAL_BEHAVIOR|CROWDING|LINGERING|OTHER","reason":"وصف عربي قصير","notify":false}`;
+  const prompt = `أنت مسؤول مراقبة أمنية مستمر. حلل هذه اللقطة. لا تعتبر وجود شخص عادياً حادثاً. أبلغ فقط عن سلوك غير طبيعي يمكن رؤيته. ساعات العمل ${WORKING_HOURS}; خارج الدوام=${context.afterHours}; المناطق الحساسة=${RESTRICTED_ZONES.join('، ')}. أعد JSON فقط: {"severity":"LOW|MEDIUM|HIGH|CRITICAL","confidence":0.0,"eventType":"NORMAL|AFTER_HOURS_PERSON|RESTRICTED_AREA|UNUSUAL_BEHAVIOR|CROWDING|LINGERING|THEFT_SUSPECTED|FIGHT|FALL|TAILGATING|OBJECT_REMOVAL|VEHICLE_ANOMALY|OTHER","reason":"وصف عربي قصير","notify":false}`;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(AI_MODEL)}:generateContent?key=${encodeURIComponent(GEMINI_KEY)}`;
   const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: 'image/jpeg', data: imageBase64 } }] }], generationConfig: { temperature: 0.1, responseMimeType: 'application/json' } }) });
   const d = await r.json();

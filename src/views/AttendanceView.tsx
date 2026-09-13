@@ -17,6 +17,7 @@ import {
   Scan
 } from 'lucide-react';
 import { useLanguageTheme } from '../context/LanguageThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { useLiveCCTV } from '../context/LiveCCTVContext';
 import { AttendanceRecord } from '../types';
 
@@ -27,6 +28,7 @@ interface AttendanceViewProps {
 export const AttendanceView: React.FC<AttendanceViewProps> = ({ onOpenFacePunch }) => {
   const { t } = useLanguageTheme();
   const { attendanceRecords, adjustAttendance, employees, cameras } = useLiveCCTV();
+  const { currentTenant } = useAuth();
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
   const [employeeName, setEmployeeName] = useState('');
   const [employeeCode, setEmployeeCode] = useState('');
@@ -38,7 +40,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({ onOpenFacePunch 
   const [captureCameraId, setCaptureCameraId] = useState('');
   const [capturingPhoto, setCapturingPhoto] = useState(false);
 
-  const [selectedDate, setSelectedDate] = useState('2026-09-12');
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0,10));
   const [filterDepartment, setFilterDepartment] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -101,7 +103,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({ onOpenFacePunch 
     e.preventDefault();
     setEmployeeSaving(true); setEmployeeMessage('');
     try {
-      const res = await fetch('/api/employees', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tenantId: 'tenant-aman-logistics', name: employeeName, employeeCode, department: employeeDepartment, position: employeePosition, photoDataUrl: employeePhotoDataUrl }) });
+      const res = await fetch('/api/employees', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tenantId: currentTenant.id, name: employeeName, employeeCode, department: employeeDepartment, position: employeePosition, photoDataUrl: employeePhotoDataUrl }) });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'فشل الحفظ');
       setEmployeeMessage('تمت إضافة الموظف وحفظ صورته بنجاح.');
@@ -129,13 +131,6 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({ onOpenFacePunch 
         </div>
 
         <div className="flex items-center gap-2.5">
-          <button
-            onClick={onOpenFacePunch}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-semibold text-xs transition shadow-lg shadow-blue-500/20 flex items-center gap-1.5 cursor-pointer"
-          >
-            <Scan className="w-4 h-4" />
-            <span>{t('محاكاة بصمة وجه بالبوابة', 'Test Face Punch Simulator')}</span>
-          </button>
 
           <button onClick={() => setShowEmployeeModal(true)} className="px-3.5 py-2 rounded-xl bg-cyan-900/50 hover:bg-cyan-900 border border-cyan-700 text-cyan-200 text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"><UserPlus className="w-4 h-4" /><span>{t('إضافة موظف وصورته', 'Add Employee + Photo')}</span></button>
           <button onClick={handleExportXlsx} className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"><Download className="w-4 h-4" /><span>{t('تصدير Excel', 'Export Excel')}</span></button>

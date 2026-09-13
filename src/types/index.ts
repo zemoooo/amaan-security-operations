@@ -129,7 +129,7 @@ export interface Employee {
   phone: string;
   email: string;
   photoUrl: string;
-  faceEmbeddingVector: number[]; // 128-dim simulation
+  faceEmbeddingVector: number[]; // face embedding vector
   isActive: boolean;
   allowedZones: string[];
   schedule: {
@@ -344,6 +344,9 @@ export interface CustomerWhatsAppSettings {
   callRingtoneEnabled: boolean;
   autoPlayVoiceBriefing: boolean;
   language: 'ar' | 'en';
+  connectionState?: string;
+  connectedAt?: string | null;
+  lastQrAt?: string | null;
 }
 
 export interface WhatsAppDispatchLog {

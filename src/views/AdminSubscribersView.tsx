@@ -348,7 +348,7 @@ export const AdminSubscribersView: React.FC = () => {
               required
               value={targetMachineId}
               onChange={(e) => setTargetMachineId(e.target.value.toUpperCase())}
-              placeholder="مثال: AMAN-DEV-98A2-F41C"
+              placeholder="مثال: AMAN-LOCAL-F41C"
               className="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl text-cyan-300 font-mono text-sm tracking-wider uppercase focus:outline-none focus:border-cyan-400"
             />
           </div>
@@ -408,7 +408,7 @@ export const AdminSubscribersView: React.FC = () => {
                 type="text"
                 value={custName}
                 onChange={(e) => setCustName(e.target.value)}
-                placeholder="مثال: م. أحمد الشمري"
+                placeholder="اسم العميل"
                 className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
               />
             </div>
@@ -419,7 +419,7 @@ export const AdminSubscribersView: React.FC = () => {
                 type="text"
                 value={custPhone}
                 onChange={(e) => setCustPhone(e.target.value)}
-                placeholder="+9665XXXXXXXX"
+                placeholder="مثال: 9677XXXXXXX"
                 className="w-full px-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
               />
             </div>
@@ -512,7 +512,7 @@ export const AdminSubscribersView: React.FC = () => {
         )}
       </div>
 
-      {/* Lock Testing & Simulation Controls for Admin */}
+      {/* Lock Testing & Real Test Controls for Admin */}
       <div className="bg-slate-900/60 border border-slate-800 p-5 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-slate-300">
@@ -520,10 +520,10 @@ export const AdminSubscribersView: React.FC = () => {
           </div>
           <div>
             <h4 className="text-sm font-bold text-slate-200">
-              اختبار آلية قفل البرنامج على هذا الجهاز (Simulation Testing)
+              اختبار آلية قفل البرنامج على هذا الجهاز (Real License Testing)
             </h4>
             <p className="text-xs text-slate-400">
-              يمكنك محاكاة انتهاء الصلاحية فوراً للتحقق من ظهور شاشة القفل وتجربة فكها بالمفتاح.
+              يمكنك اختبار حالة الترخيص فوراً للتحقق من ظهور شاشة القفل وتجربة فكها بالمفتاح.
             </p>
           </div>
         </div>

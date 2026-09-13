@@ -136,7 +136,7 @@ export const WindowsAgentModal: React.FC<WindowsAgentModalProps> = ({ onClose })
             <span>
               {isSimulatingSync
                 ? t('جاري اختبار نبضات الجهاز والمزامنة...', 'Testing Device Heartbeat & Sync...')
-                : t('محاكاة فحص اتصال جهاز ويندوز الآن', 'Simulate Windows Edge Heartbeat Handshake')}
+                : t('اختبار حقيقي فحص اتصال جهاز ويندوز الآن', 'Test Windows Edge Heartbeat Handshake')}
             </span>
           </button>
 

@@ -96,7 +96,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
   };
 
   const handleFastSwitchAdmin = () => {
-    const admin = availableUsers.find(u => u.role === 'SUPER_ADMIN' || u.email === 'smarttechyeme@gmail.com');
+    const admin = availableUsers.find(u => u.role === 'SUPER_ADMIN' || u.email === '');
     if (admin) {
       switchUser(admin.id);
       onClose();
@@ -173,7 +173,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="مثال: م. أحمد الشمري"
+                    placeholder="اسم المستخدم"
                     className="w-full pr-10 pl-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
                   />
                 </div>
@@ -188,7 +188,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultTa
                       type="text"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+9665XXXXXXXX"
+                      placeholder="رقم الهاتف مع مفتاح الدولة"
                       className="w-full pr-10 pl-3 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500"
                     />
                   </div>

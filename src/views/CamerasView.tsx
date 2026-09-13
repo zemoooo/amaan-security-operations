@@ -17,6 +17,7 @@ import {
   Clock
 } from 'lucide-react';
 import { useLanguageTheme } from '../context/LanguageThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { useLiveCCTV } from '../context/LiveCCTVContext';
 import { Camera } from '../types';
 import { LiveCameraPlayer } from '../components/LiveCameraPlayer';
@@ -28,6 +29,7 @@ interface CamerasViewProps {
 export const CamerasView: React.FC<CamerasViewProps> = ({ onOpenZoneDrawer }) => {
   const { t } = useLanguageTheme();
   const { cameras, selectedCamera, setSelectedCamera, addCamera, addRecorder, updateCameraStatus } = useLiveCCTV();
+  const { currentTenant } = useAuth();
 
   const [layoutMode, setLayoutMode] = useState<'SINGLE' | 'QUAD'>('SINGLE');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -37,10 +39,10 @@ export const CamerasView: React.FC<CamerasViewProps> = ({ onOpenZoneDrawer }) =>
   const [newCamName, setNewCamName] = useState('');
   const [newCamLocation, setNewCamLocation] = useState('');
   const [newCamType, setNewCamType] = useState<Camera['type']>('RTSP');
-  const [newCamUrl, setNewCamUrl] = useState('rtsp://192.168.1.120:554/live/ch0');
-  const [newCamUsername, setNewCamUsername] = useState('admin');
+  const [newCamUrl, setNewCamUrl] = useState('');
+  const [newCamUsername, setNewCamUsername] = useState('');
   const [newCamPassword, setNewCamPassword] = useState('');
-  const [recUsername, setRecUsername] = useState('admin');
+  const [recUsername, setRecUsername] = useState('');
   const [recPassword, setRecPassword] = useState('');
   const [newCamResolution, setNewCamResolution] = useState('1920x1080');
   const [newCamFps, setNewCamFps] = useState(25);
@@ -50,7 +52,7 @@ export const CamerasView: React.FC<CamerasViewProps> = ({ onOpenZoneDrawer }) =>
   const [recName, setRecName] = useState('');
   const [recType, setRecType] = useState<'NVR' | 'DVR'>('NVR');
   const [recChannels, setRecChannels] = useState<4 | 8 | 16 | 32 | 64>(16);
-  const [recIp, setRecIp] = useState('192.168.1.100');
+  const [recIp, setRecIp] = useState('');
   const [recPort, setRecPort] = useState(8000);
 
   const handleCreateRecorder = (e: React.FormEvent) => {
@@ -58,14 +60,14 @@ export const CamerasView: React.FC<CamerasViewProps> = ({ onOpenZoneDrawer }) =>
     if (!recName.trim()) return;
 
     addRecorder({
-      tenantId: 'tenant-aman-logistics',
+      tenantId: currentTenant.id,
       name: recName,
       type: recType,
       channels: recChannels,
       ipAddress: recIp,
       port: recPort,
       status: 'ONLINE',
-      brand: 'Hikvision / Dahua / Generic',
+      brand: '',
       username: recUsername,
       password: recPassword,
     });
@@ -80,7 +82,7 @@ export const CamerasView: React.FC<CamerasViewProps> = ({ onOpenZoneDrawer }) =>
     if (!newCamName.trim()) return;
 
     addCamera({
-      tenantId: 'tenant-aman-logistics',
+      tenantId: currentTenant.id,
       name: newCamName,
       location: newCamLocation || 'موقع عام',
       type: newCamType,
@@ -192,9 +194,9 @@ export const CamerasView: React.FC<CamerasViewProps> = ({ onOpenZoneDrawer }) =>
                   <p className="font-mono text-cyan-400 text-[11px] select-all">{selectedCamera.streamUrl}</p>
                 </div>
 
-                {/* Status Toggle buttons for simulation */}
+                {/* Connection status controls */}
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-400 text-[11px]">{t('محاكاة حالة الكاميرا:', 'Simulate State:')}</span>
+                  <span className="text-slate-400 text-[11px]">{t('حالة الاتصال:', 'Connection State:')}</span>
                   {(['ONLINE', 'DEGRADED', 'OFFLINE'] as const).map(st => (
                     <button
                       key={st}
@@ -476,7 +478,7 @@ export const CamerasView: React.FC<CamerasViewProps> = ({ onOpenZoneDrawer }) =>
                     required
                     value={recIp}
                     onChange={e => setRecIp(e.target.value)}
-                    placeholder="192.168.1.100"
+                    placeholder=""
                     className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 focus:outline-none focus:border-cyan-500"
                   />
                 </div>
