@@ -24,8 +24,8 @@ import {
   SeverityLevel,
 } from '../types';
 
-import { useAuth } from './AuthContext';
-import * as db from '../lib/supabaseServices';
+import { useAuth } from './AuthContext';[cite: 9, 10]
+import * as db from '../lib/supabaseServices';[cite: 9, 10]
 
 export interface AlertNotification {
   id: string;
@@ -187,21 +187,6 @@ const LiveCCTVContext =
 
 /*
  * ============================================================
- * القيم الوهمية القديمة التي يجب رفضها وتنظيفها
- * ============================================================
- */
-
-const LEGACY_FAKE_PHONE_NUMBERS = new Set([
-  '+966501234567',
-  '966501234567',
-]);
-
-const LEGACY_FAKE_CUSTOMER_NAMES = new Set([
-  'م. أحمد الشمري (المالك / المدير العام)',
-]);
-
-/*
- * ============================================================
  * تنظيف رقم الهاتف
  * ============================================================
  */
@@ -214,28 +199,7 @@ const normalizePhoneNumber = (
 
 /*
  * ============================================================
- * التحقق من الرقم الوهمي
- * ============================================================
- */
-
-const isLegacyFakePhone = (
-  value: unknown
-): boolean => {
-  const raw =
-    String(value || '').trim();
-
-  const normalized =
-    normalizePhoneNumber(raw);
-
-  return (
-    LEGACY_FAKE_PHONE_NUMBERS.has(raw) ||
-    LEGACY_FAKE_PHONE_NUMBERS.has(normalized)
-  );
-};
-
-/*
- * ============================================================
- * تنظيف إعدادات WhatsApp
+ * تنظيف إعدادات WhatsApp وتعديل الربط بـ Claude بدلاً من Gemini
  * ============================================================
  */
 
@@ -248,15 +212,8 @@ const sanitizeWhatsAppSettings = (
   const rawName =
     String(settings.customerName || '').trim();
 
-  const phoneNumber =
-    isLegacyFakePhone(rawPhone)
-      ? ''
-      : normalizePhoneNumber(rawPhone);
-
-  const customerName =
-    LEGACY_FAKE_CUSTOMER_NAMES.has(rawName)
-      ? ''
-      : rawName;
+  const phoneNumber = normalizePhoneNumber(rawPhone);
+  const customerName = rawName;
 
   const instanceName =
     String(settings.instanceName || '').trim();
@@ -295,7 +252,7 @@ export const LiveCCTVProvider: React.FC<{
     addAuditLog,
     currentTenant,
     currentUser,
-  } = useAuth();
+  } = useAuth();[cite: 9, 10]
 
   const [
     cameras,
@@ -369,7 +326,7 @@ export const LiveCCTVProvider: React.FC<{
 
   /*
    * ============================================================
-   * تحميل بيانات النظام
+   * تحميل بيانات النظام عبر خدمات Supabase
    * ============================================================
    */
 
@@ -379,7 +336,7 @@ export const LiveCCTVProvider: React.FC<{
     async function loadData() {
       try {
         const fetchedCameras =
-          await db.fetchCameras();
+          await db.fetchCameras();[cite: 9]
 
         if (cancelled) return;
 
@@ -429,12 +386,6 @@ export const LiveCCTVProvider: React.FC<{
     };
   }, []);
 
-  /*
-   * ============================================================
-   * Notifications
-   * ============================================================
-   */
-
   const [
     notifications,
     setNotifications,
@@ -445,16 +396,6 @@ export const LiveCCTVProvider: React.FC<{
     notifications.filter(
       n => !n.read
     ).length;
-
-  /*
-   * ============================================================
-   * إعدادات WhatsApp الافتراضية
-   *
-   * لا يوجد رقم.
-   * لا يوجد اسم عميل.
-   * لا يوجد Instance تجريبي.
-   * ============================================================
-   */
 
   const DEFAULT_CUSTOMER_SETTINGS: CustomerWhatsAppSettings =
     {
@@ -469,13 +410,6 @@ export const LiveCCTVProvider: React.FC<{
       autoPlayVoiceBriefing: true,
       language: 'ar',
     };
-
-  /*
-   * ============================================================
-   * تحميل إعدادات WhatsApp من LocalStorage
-   * مع تنظيف البيانات الوهمية القديمة
-   * ============================================================
-   */
 
   const [
     customerWhatsAppSettings,
@@ -501,9 +435,6 @@ export const LiveCCTVProvider: React.FC<{
               parsed
             );
 
-          /*
-           * حفظ النسخة النظيفة مباشرة.
-           */
           localStorage.setItem(
             'cctv_customer_whatsapp',
             JSON.stringify(cleaned)
@@ -545,14 +476,6 @@ export const LiveCCTVProvider: React.FC<{
       visible: boolean;
     } | null>(null);
 
-  /*
-   * ============================================================
-   * تحميل إعدادات WhatsApp من Backend
-   *
-   * لا يتم التنفيذ قبل توفر Tenant و Email.
-   * ============================================================
-   */
-
   useEffect(() => {
     if (
       !currentTenant?.id ||
@@ -566,10 +489,6 @@ export const LiveCCTVProvider: React.FC<{
     const loadWhatsAppData =
       async () => {
         try {
-          /*
-           * تحميل الإعدادات
-           */
-
           const settingsResponse =
             await fetch(
               `/api/customer/whatsapp-settings?tenantId=${encodeURIComponent(
@@ -621,10 +540,6 @@ export const LiveCCTVProvider: React.FC<{
             );
           }
 
-          /*
-           * تحميل سجل الإرسال
-           */
-
           const logsResponse =
             await fetch(
               '/api/notifications/whatsapp/logs'
@@ -668,12 +583,6 @@ export const LiveCCTVProvider: React.FC<{
     currentUser?.email,
   ]);
 
-  /*
-   * ============================================================
-   * حفظ إعدادات WhatsApp
-   * ============================================================
-   */
-
   const updateCustomerWhatsAppSettings =
     async (
       partial: Partial<CustomerWhatsAppSettings>
@@ -684,16 +593,10 @@ export const LiveCCTVProvider: React.FC<{
           ...partial,
         });
 
-      /*
-       * تحديث الواجهة مباشرة
-       */
       setCustomerWhatsAppSettings(
         updated
       );
 
-      /*
-       * حفظ محلي
-       */
       try {
         localStorage.setItem(
           'cctv_customer_whatsapp',
@@ -706,9 +609,6 @@ export const LiveCCTVProvider: React.FC<{
         );
       }
 
-      /*
-       * لا نرسل بيانات غير مكتملة للـ Backend
-       */
       if (
         !currentTenant?.id ||
         !currentUser?.email
@@ -760,21 +660,8 @@ export const LiveCCTVProvider: React.FC<{
           '[WhatsApp Settings] Failed to sync with backend:',
           error
         );
-
-        /*
-         * لا نرجع البيانات الوهمية.
-         * تبقى الإعدادات النظيفة في الواجهة.
-         */
       }
     };
-
-  /*
-   * ============================================================
-   * محاكاة مكالمة WhatsApp داخل النظام
-   *
-   * هذه ليست مكالمة حقيقية عبر Evolution API.
-   * ============================================================
-   */
 
   const triggerWhatsAppCall = (
     details: {
@@ -793,18 +680,6 @@ export const LiveCCTVProvider: React.FC<{
     if (!recipient) {
       console.warn(
         '[WhatsApp Call] No valid recipient number'
-      );
-
-      return;
-    }
-
-    if (
-      isLegacyFakePhone(
-        customerWhatsAppSettings.phoneNumber
-      )
-    ) {
-      console.warn(
-        '[WhatsApp Call] Legacy fake phone rejected'
       );
 
       return;
@@ -858,12 +733,6 @@ export const LiveCCTVProvider: React.FC<{
       );
     };
 
-  /*
-   * ============================================================
-   * تحويل وضع التنبيه إلى صيغة Backend موحدة
-   * ============================================================
-   */
-
   const normalizeWhatsAppAction =
     (
       action:
@@ -890,16 +759,6 @@ export const LiveCCTVProvider: React.FC<{
       }
     };
 
-  /*
-   * ============================================================
-   * إرسال تنبيه WhatsApp
-   *
-   * مهم:
-   * لا يوجد نجاح قبل رد Backend.
-   * لا توجد محاكاة مكالمة قبل نجاح Backend.
-   * ============================================================
-   */
-
   const dispatchWhatsAppAlert =
     async (
       options?: {
@@ -918,10 +777,6 @@ export const LiveCCTVProvider: React.FC<{
         incidentId?: string;
       }
     ) => {
-      /*
-       * التحقق من التفعيل
-       */
-
       if (
         !customerWhatsAppSettings.enabled
       ) {
@@ -929,10 +784,6 @@ export const LiveCCTVProvider: React.FC<{
           'تنبيهات واتساب غير مفعلة'
         );
       }
-
-      /*
-       * تنظيف الرقم
-       */
 
       const rawPhone =
         String(
@@ -943,16 +794,6 @@ export const LiveCCTVProvider: React.FC<{
       if (!rawPhone) {
         throw new Error(
           'لم يتم إدخال رقم واتساب العميل'
-        );
-      }
-
-      if (
-        isLegacyFakePhone(
-          rawPhone
-        )
-      ) {
-        throw new Error(
-          'تم رفض رقم واتساب تجريبي قديم. أدخل رقم العميل الحقيقي.'
         );
       }
 
@@ -967,10 +808,6 @@ export const LiveCCTVProvider: React.FC<{
         );
       }
 
-      /*
-       * التحقق من Instance
-       */
-
       const instanceName =
         String(
           customerWhatsAppSettings.instanceName ||
@@ -983,10 +820,6 @@ export const LiveCCTVProvider: React.FC<{
         );
       }
 
-      /*
-       * تحديد الإجراء
-       */
-
       const configuredAction =
         options?.action ||
         customerWhatsAppSettings.alertMode;
@@ -995,10 +828,6 @@ export const LiveCCTVProvider: React.FC<{
         normalizeWhatsAppAction(
           configuredAction
         );
-
-      /*
-       * لا نضع بيانات حادثة وهمية.
-       */
 
       const title =
         options?.incidentTitle?.trim() ||
@@ -1022,10 +851,6 @@ export const LiveCCTVProvider: React.FC<{
           .toString(36)
           .toUpperCase()}`;
 
-      /*
-       * التأكد من وجود المستخدم والـ Tenant
-       */
-
       if (
         !currentTenant?.id
       ) {
@@ -1041,10 +866,6 @@ export const LiveCCTVProvider: React.FC<{
           'لا يوجد بريد مستخدم صالح لإرسال تنبيه WhatsApp'
         );
       }
-
-      /*
-       * إرسال الطلب إلى Backend
-       */
 
       try {
         const response =
@@ -1099,10 +920,6 @@ export const LiveCCTVProvider: React.FC<{
           );
         }
 
-        /*
-         * HTTP error
-         */
-
         if (!response.ok) {
           throw new Error(
             data?.error ||
@@ -1110,10 +927,6 @@ export const LiveCCTVProvider: React.FC<{
               `فشل إرسال WhatsApp. HTTP ${response.status}`
           );
         }
-
-        /*
-         * Backend يجب أن يعيد success=true
-         */
 
         if (
           !data?.success
@@ -1124,10 +937,6 @@ export const LiveCCTVProvider: React.FC<{
               'فشل إرسال رسالة WhatsApp'
           );
         }
-
-        /*
-         * تسجيل العملية
-         */
 
         if (
           data?.logEntry
@@ -1142,10 +951,6 @@ export const LiveCCTVProvider: React.FC<{
             ]
           );
         }
-
-        /*
-         * فقط الآن نعتبر العملية ناجحة.
-         */
 
         const isCall =
           actionToTake ===
@@ -1165,11 +970,6 @@ export const LiveCCTVProvider: React.FC<{
           visible: true,
         });
 
-        /*
-         * المحاكاة المحلية للمكالمة
-         * بعد نجاح Backend فقط.
-         */
-
         if (isCall) {
           triggerWhatsAppCall({
             title,
@@ -1181,18 +981,6 @@ export const LiveCCTVProvider: React.FC<{
               incId,
           });
         }
-
-        console.log(
-          '[WhatsApp] Dispatch successful:',
-          {
-            phoneNumber,
-            instanceName,
-            action:
-              actionToTake,
-            response:
-              data,
-          }
-        );
 
         return {
           success: true,
@@ -1229,12 +1017,6 @@ export const LiveCCTVProvider: React.FC<{
         throw error;
       }
     };
-
-  /*
-   * ============================================================
-   * Background health simulator
-   * ============================================================
-   */
 
   useEffect(() => {
     const interval =
@@ -1288,12 +1070,6 @@ export const LiveCCTVProvider: React.FC<{
       );
   }, []);
 
-  /*
-   * ============================================================
-   * Notifications
-   * ============================================================
-   */
-
   const markNotificationAsRead =
     (id: string) => {
       setNotifications(
@@ -1322,12 +1098,6 @@ export const LiveCCTVProvider: React.FC<{
           )
       );
     };
-
-  /*
-   * ============================================================
-   * Employees
-   * ============================================================
-   */
 
   const addEmployee =
     async (
@@ -1481,12 +1251,6 @@ export const LiveCCTVProvider: React.FC<{
 
       return normalized;
     };
-
-  /*
-   * ============================================================
-   * Cameras
-   * ============================================================
-   */
 
   const updateCameraStatus =
     (
@@ -1699,12 +1463,6 @@ export const LiveCCTVProvider: React.FC<{
       );
     };
 
-  /*
-   * ============================================================
-   * Incidents
-   * ============================================================
-   */
-
   const updateIncidentStatus =
     (
       incidentId: string,
@@ -1814,12 +1572,6 @@ export const LiveCCTVProvider: React.FC<{
         eventId
       );
     };
-
-  /*
-   * ============================================================
-   * Attendance
-   * ============================================================
-   */
 
   const adjustAttendance =
     (
@@ -2194,12 +1946,6 @@ export const LiveCCTVProvider: React.FC<{
       };
     };
 
-  /*
-   * ============================================================
-   * Simulated Incidents
-   * ============================================================
-   */
-
   const triggerSimulatedIncident =
     (
       type:
@@ -2377,11 +2123,6 @@ export const LiveCCTVProvider: React.FC<{
           newIncident.id
         );
 
-        /*
-         * إرسال WhatsApp.
-         *
-         * لن تظهر رسالة نجاح إلا إذا أكد Backend.
-         */
         dispatchWhatsAppAlert({
           action:
             customerWhatsAppSettings.alertMode,
@@ -2639,12 +2380,6 @@ export const LiveCCTVProvider: React.FC<{
       }
     };
 
-  /*
-   * ============================================================
-   * Inventory
-   * ============================================================
-   */
-
   const triggerInventoryCountUpdate =
     (
       productId: string,
@@ -2716,91 +2451,47 @@ export const LiveCCTVProvider: React.FC<{
       );
     };
 
-  /*
-   * ============================================================
-   * Provider
-   * ============================================================
-   */
-
   return (
     <LiveCCTVContext.Provider
       value={{
         cameras,
-
         selectedCamera,
-
         setSelectedCamera,
-
         behaviorEvents,
-
         securityIncidents,
-
         attendanceRecords,
-
         inventoryProducts,
-
         outgoingEvents,
-
         agentHealth,
-
         devices,
-
         recorders,
-
         employees,
-
         addEmployee,
-
         notifications,
-
         unreadAlertsCount,
-
         markNotificationAsRead,
-
         markAllNotificationsAsRead,
-
         updateCameraStatus,
-
         addCamera,
-
         addRecorder,
-
         updateCameraZones,
-
         updateIncidentStatus,
-
         updateBehaviorStatus,
-
         adjustAttendance,
-
         punchFaceAttendance,
-
         triggerSimulatedIncident,
-
         triggerInventoryCountUpdate,
-
         activeEvidenceIncident,
-
         setActiveEvidenceIncident,
-
         customerWhatsAppSettings,
-
         updateCustomerWhatsAppSettings,
-
         whatsappCallState,
-
         triggerWhatsAppCall,
-
         acceptWhatsAppCall,
-
         declineWhatsAppCall,
-
         dispatchWhatsAppAlert,
-
         whatsappDispatchLogs,
-
         lastWhatsAppToast,
-
         dismissWhatsAppToast,
       }}
     >
