@@ -806,22 +806,16 @@ async function getWhatsAppConfig(req: any) {
       ''
   ).trim();
 
+  // تعديل: رمي خطأ بدلاً من الإرجاع الصامت للقيم الافتراضية
   if (!tenantId) {
-    return {
-      ...DEFAULT_WHATSAPP_CONFIG,
-    };
+    throw new Error('معرف العميل (tenantId) مفقود. لا يمكن جلب إعدادات الـ API.');
   }
 
   if (!supabaseAdmin) {
-    return {
-      ...DEFAULT_WHATSAPP_CONFIG,
-    };
+    throw new Error('قاعدة بيانات Supabase غير مضبوطة على الخادم.');
   }
 
-  const {
-    data,
-    error,
-  } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from('customer_whatsapp_settings')
     .select('*')
     .eq('tenant_id', tenantId)
@@ -829,48 +823,21 @@ async function getWhatsAppConfig(req: any) {
 
   if (error) throw error;
 
+  // إرجاع القيم الافتراضية فقط في حال كان العميل موجوداً ولكن لم يقم بحفظ إعدادات مسبقاً
   return data
     ? {
-        phoneNumber:
-          data.phone_number || '',
-
-        customerName:
-          data.customer_name || '',
-
-        instanceName:
-          data.instance_name || '',
-
-        enabled:
-          data.enabled !== false,
-
-        alertMode:
-          'MESSAGE_ONLY',
-
-        minSeverity:
-          data.min_severity || 'MEDIUM',
-
-        callRingtoneEnabled:
-          Boolean(
-            data.call_ringtone_enabled
-          ),
-
-        autoPlayVoiceBriefing:
-          Boolean(
-            data.auto_play_voice_briefing
-          ),
-
-        language:
-          data.language || 'ar',
-
-        connectionState:
-          data.connection_state ||
-          'disconnected',
-
-        connectedAt:
-          data.connected_at || null,
-
-        lastQrAt:
-          data.last_qr_at || null,
+        phoneNumber: data.phone_number || '',
+        customerName: data.customer_name || '',
+        instanceName: data.instance_name || '',
+        enabled: data.enabled !== false,
+        alertMode: 'MESSAGE_ONLY',
+        minSeverity: data.min_severity || 'MEDIUM',
+        callRingtoneEnabled: Boolean(data.call_ringtone_enabled),
+        autoPlayVoiceBriefing: Boolean(data.auto_play_voice_briefing),
+        language: data.language || 'ar',
+        connectionState: data.connection_state || 'disconnected',
+        connectedAt: data.connected_at || null,
+        lastQrAt: data.last_qr_at || null,
       }
     : {
         ...DEFAULT_WHATSAPP_CONFIG,
